@@ -24,7 +24,7 @@ enum Aspect: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-enum Mode: String, CaseIterable, Codable { case photo, video }
+enum CaptureMode: String, CaseIterable, Codable { case photo, video }
 
 enum Resolution: Int, CaseIterable, Identifiable, Codable {
     case p720 = 720, p1080 = 1080, p1440 = 1440, p2160 = 2160
@@ -68,7 +68,7 @@ struct Config: Equatable, Codable {
     var resolution: Resolution = .p1080
     var frameRate: FrameRate = .f30
     var mirrored = true
-    var mode: Mode = .photo
+    var mode: CaptureMode = .photo
     var micOn = true
     /// The microphone to record from; nil is the system's default input.
     var micID: String?
@@ -113,7 +113,7 @@ struct Config: Equatable, Codable {
         if let v = try? c.decodeIfPresent(Resolution.self, forKey: .resolution) { resolution = v }
         if let v = try? c.decodeIfPresent(FrameRate.self, forKey: .frameRate) { frameRate = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .mirrored) { mirrored = v }
-        if let v = try? c.decodeIfPresent(Mode.self, forKey: .mode) { mode = v }
+        if let v = try? c.decodeIfPresent(CaptureMode.self, forKey: .mode) { mode = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .micOn) { micOn = v }
         micID = try? c.decodeIfPresent(String.self, forKey: .micID)
         if let v = try? c.decodeIfPresent([String: Int].self, forKey: .rotations) { rotations = v }

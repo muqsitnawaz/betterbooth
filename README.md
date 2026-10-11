@@ -14,8 +14,9 @@ preview, then take a photo or record a video in 9:16, 4:5, 3:4 or 1:1, at 720p t
 
 Download the latest signed and notarized app from
 [Releases](https://github.com/muqsitnawaz/camera/releases/latest), unzip it and move it to
-Applications. Formerly BetterBooth: version 0.4 keeps your settings and permissions, and moves
-your captures from `~/Pictures/BetterBooth` to `~/Pictures/Camera`.
+Applications. Formerly BetterBooth: version 0.4 keeps your permissions, camera and format
+choices, and moves your captures from `~/Pictures/BetterBooth` to `~/Pictures/Camera`. Effects
+and the ring light start off.
 
 ## A tour
 
@@ -100,8 +101,8 @@ hoc, which runs the same, but macOS asks for camera permission again after each 
 Camera asks for the camera the first time you open it, for the microphone the first time you
 switch to Video with sound on, and for your location the first time you turn on Location. While
 the popover is open in Video with sound on, the microphone is live for the level meter, so macOS
-shows its microphone indicator; Photo never opens it. If you said no, turn it back on in System Settings → Privacy & Security →
-Camera (or Microphone). Without microphone access, videos record without sound and Camera says
+shows its microphone indicator. Photo never opens it. If you said no, turn it back on in
+System Settings → Privacy & Security → Camera (or Microphone). Without microphone access, videos record without sound and Camera says
 so.
 
 A MacBook's own camera is off while its lid is closed. Camera then uses another connected

@@ -2,7 +2,7 @@ import AVFoundation
 import SwiftUI
 
 struct ShutterButton: View {
-    let mode: Mode
+    let mode: CaptureMode
     let recording: Bool
     /// While a capture is shown, the shutter only brings the live picture back.
     let returnsToCamera: Bool

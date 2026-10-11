@@ -18,7 +18,7 @@ struct ContentView: View {
 
     enum Overlay { case settings, effects }
 
-    private var mode: Mode { camera.config.mode }
+    private var mode: CaptureMode { camera.config.mode }
 
     private var previewSize: CGSize {
         let r = camera.config.ratio
@@ -39,7 +39,7 @@ struct ContentView: View {
         VStack(spacing: 14) {
             preview
             AspectPicker(config: $camera.config)
-                .disabled(camera.isRecording)
+                .disabled(camera.isRecording || viewing != nil)
             modePicker
             shutterRow
             if !library.items.isEmpty { strip }
@@ -167,7 +167,7 @@ struct ContentView: View {
 
     private var modePicker: some View {
         HStack(spacing: 22) {
-            ForEach(Mode.allCases, id: \.self) { m in
+            ForEach(CaptureMode.allCases, id: \.self) { m in
                 Button { camera.config.mode = m } label: {
                     Text(m.rawValue.uppercased())
                         .font(.system(size: 12, weight: .semibold))

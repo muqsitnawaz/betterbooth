@@ -19,6 +19,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         statusItem.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         camera.$recordingSince.sink { [weak self] since in self?.updateIcon(recording: since != nil) }.store(in: &cancellables)
 
+        // Never shown for a menu-bar app, but its ⌘Q works while the popover is focused.
+        let appMenu = NSMenuItem()
+        appMenu.submenu = NSMenu()
+        appMenu.submenu?.addItem(withTitle: "Quit Camera", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        NSApp.mainMenu = NSMenu()
+        NSApp.mainMenu?.addItem(appMenu)
+
         let host = NSHostingController(rootView: ContentView(camera: camera, library: library))
         host.sizingOptions = .preferredContentSize
         popover.contentViewController = host

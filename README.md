@@ -29,8 +29,7 @@ and the ring light start off.
 </table>
 
 [**Try the interactive design prototype**](https://muqsitnawaz.github.io/camera/design/): every
-control in its popover is clickable, and each change in 0.4 is listed beside it with the feedback
-that asked for it.
+control in its popover is clickable.
 
 - **Camera.** The camera's name sits on the preview; click it to pick any connected camera.
 - **Photo or Video.** The microphone and its level meter appear in Video only. Click the mic to

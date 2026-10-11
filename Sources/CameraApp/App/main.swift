@@ -29,7 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     private func updateIcon(recording: Bool) {
         let name = recording ? "record.circle.fill" : "camera.fill"
-        let image = NSImage(systemSymbolName: name, accessibilityDescription: recording ? "BetterBooth, recording" : "BetterBooth")
+        let image = NSImage(systemSymbolName: name, accessibilityDescription: recording ? "Camera, recording" : "Camera")
         image?.isTemplate = !recording
         statusItem.button?.image = recording
             ? image?.withSymbolConfiguration(.init(paletteColors: [.white, .systemRed]))
@@ -39,9 +39,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     @objc private func statusItemClicked() {
         if NSApp.currentEvent?.type == .rightMouseUp {
             let menu = NSMenu()
-            menu.addItem(withTitle: "Open BetterBooth Folder", action: #selector(openFolder), keyEquivalent: "").target = self
+            menu.addItem(withTitle: "Open Camera Folder", action: #selector(openFolder), keyEquivalent: "").target = self
             menu.addItem(.separator())
-            menu.addItem(withTitle: "Quit BetterBooth", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+            menu.addItem(withTitle: "Quit Camera", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
             statusItem.menu = menu
             statusItem.button?.performClick(nil)
             statusItem.menu = nil

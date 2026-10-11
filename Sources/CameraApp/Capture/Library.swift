@@ -1,19 +1,23 @@
 import AppKit
 import QuickLookThumbnailing
 
-/// Photos and videos live in ~/Pictures/BetterBooth; the strip shows the newest ones.
+/// Photos and videos live in ~/Pictures/Camera; the strip shows the newest ones.
 final class Library: ObservableObject {
     static let folder: URL = {
-        let url = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask)[0].appendingPathComponent("BetterBooth", isDirectory: true)
+        let pictures = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask)[0]
+        let url = pictures.appendingPathComponent("Camera", isDirectory: true)
+        // Captures from before the rename (BetterBooth 0.3 and earlier) move over once.
+        let old = pictures.appendingPathComponent("BetterBooth", isDirectory: true)
+        if !FileManager.default.fileExists(atPath: url.path) { try? FileManager.default.moveItem(at: old, to: url) }
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }()
 
-    /// `BetterBooth 2026-10-11 01.18.09 cam-link-4k 9x16 1080p 30fps.mp4`, time first to sort.
+    /// `Camera 2026-10-11 01.18.09 cam-link-4k 9x16 1080p 30fps.mp4`, time first to sort.
     static func newURL(ext: String, tags: [String]) -> URL {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd HH.mm.ss"
-        let base = (["BetterBooth", f.string(from: Date())] + tags).joined(separator: " ")
+        let base = (["Camera", f.string(from: Date())] + tags).joined(separator: " ")
         var url = folder.appendingPathComponent("\(base).\(ext)")
         var n = 2
         while FileManager.default.fileExists(atPath: url.path) {

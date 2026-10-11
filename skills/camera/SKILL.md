@@ -1,17 +1,17 @@
 ---
-name: betterbooth
+name: camera
 description: Take a photo or record a video from a Mac's cameras with one shell command, and get the file's path back. Use it when a task needs a picture or a clip from the built-in camera, an iPhone through Continuity Camera, a USB webcam or an HDMI capture card, in vertical (9:16, 4:5, 3:4), square or landscape framing.
 ---
 
-# BetterBooth
+# Camera
 
-BetterBooth is a free, open-source menu-bar camera for macOS
+Camera is a free, open-source menu-bar camera for macOS
 ([github.com/muqsitnawaz/betterbooth](https://github.com/muqsitnawaz/betterbooth)). The same app
 captures from the command line without opening a window:
 
 ```sh
-/Applications/BetterBooth.app/Contents/MacOS/BetterBooth --photo --aspect 9:16
-# prints: /Users/you/Pictures/BetterBooth/BetterBooth 2026-10-11 09.41.52 iphone 9x16 1080p.jpg
+/Applications/Camera.app/Contents/MacOS/Camera --photo --aspect 9:16
+# prints: /Users/you/Pictures/Camera/Camera 2026-10-11 09.41.52 iphone 9x16 1080p.jpg
 ```
 
 ## Why use it instead of ffmpeg or imagesnap
@@ -21,10 +21,10 @@ captures from the command line without opening a window:
   was written.
 - **It waits for a real picture.** It waits for the camera to deliver live frames (up to 6
   seconds), then lets exposure settle for a second before capturing. With a MacBook's lid
-  closed, ffmpeg's `-f avfoundation` sat waiting with no output in testing; BetterBooth says why
+  closed, ffmpeg's `-f avfoundation` sat waiting with no output in testing; Camera says why
   instead: `error: MacBook Pro Camera is off while the lid is closed`.
 - **Framing is done for you.** Ask for `9:16` and you get a centred 9:16 crop at the size you
-  asked for. BetterBooth picks the camera mode that keeps the most real pixels: the MacBook camera
+  asked for. Camera picks the camera mode that keeps the most real pixels: the MacBook camera
   has a native 1080×1920 portrait mode, so vertical photos are not cut from a landscape frame.
 - **Cameras by name, not index.** `--camera iphone`, `--camera "cam link"`: part of the name is
   enough, and `--list` prints every camera and microphone.
@@ -42,10 +42,10 @@ captures from the command line without opening a window:
 
 Download the zip from
 [Releases](https://github.com/muqsitnawaz/betterbooth/releases/latest), unzip it and move
-`BetterBooth.app` to `/Applications`. It is signed and notarized, and needs macOS 14 or later on
+`Camera.app` to `/Applications`. It is signed and notarized, and needs macOS 14 or later on
 Apple silicon or Intel. The first capture asks for camera access, and the first recording with
 sound for microphone access. Run from a terminal or an agent, macOS may ask on behalf of that
-app rather than BetterBooth. Either way a person has to click Allow once.
+app rather than Camera. Either way a person has to click Allow once.
 
 ## Commands
 
@@ -82,18 +82,18 @@ command-line captures never write a location.
   full sensor becomes an upright vertical frame instead of a narrow strip.
 - **A capture card.** An HDMI capture card such as the Elgato Cam Link 4K turns any camera with
   HDMI out into a source, at up to 60 fps.
-- **A closed MacBook lid.** The built-in camera is off, so BetterBooth uses another connected
+- **A closed MacBook lid.** The built-in camera is off, so Camera uses another connected
   camera. Ask for the built-in one explicitly and it reports that the lid is closed.
 - **A rate the camera can't do.** It records at the nearest rate the camera supports, and the
   file name says which.
 
 ## Output
 
-Files go to `~/Pictures/BetterBooth`, named so `ls` or Spotlight finds them:
+Files go to `~/Pictures/Camera`, named so `ls` or Spotlight finds them:
 
 ```
-BetterBooth 2026-10-11 09.41.52 cam-link-4k 9x16 1080p.jpg
-BetterBooth 2026-10-11 09.40.31 cam-link-4k 9x16 1080p 30fps.mp4
+Camera 2026-10-11 09.41.52 cam-link-4k 9x16 1080p.jpg
+Camera 2026-10-11 09.40.31 cam-link-4k 9x16 1080p 30fps.mp4
 ```
 
 A `--record 5` file is 5 seconds long. When the run changes the camera's frame rate, some cameras
@@ -103,7 +103,7 @@ than the rate implies.
 ## Recipes
 
 ```sh
-BB=/Applications/BetterBooth.app/Contents/MacOS/BetterBooth
+BB=/Applications/Camera.app/Contents/MacOS/Camera
 
 # What's connected?
 $BB --list

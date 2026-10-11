@@ -56,7 +56,7 @@ struct ContentView: View {
             if camera.access == .denied {
                 VStack(spacing: 8) {
                     Image(systemName: "video.slash.fill").font(.title)
-                    Text("VertCam needs camera access.").font(.callout)
+                    Text("BetterBooth needs camera access.").font(.callout)
                     Button("Open Privacy Settings") {
                         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera")!)
                     }
@@ -169,8 +169,8 @@ struct ContentView: View {
                     }
                     .pickerStyle(.menu)
                     Divider()
-                    Button("Open VertCam Folder") { NSWorkspace.shared.open(Library.folder) }
-                    Button("Quit VertCam") { NSApp.terminate(nil) }
+                    Button("Open BetterBooth Folder") { NSWorkspace.shared.open(Library.folder) }
+                    Button("Quit BetterBooth") { NSApp.terminate(nil) }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
@@ -245,7 +245,7 @@ struct ContentView: View {
             }
             .buttonStyle(.borderless)
             .imageScale(.large)
-            .help("Open the VertCam folder")
+            .help("Open the BetterBooth folder")
             .frame(width: 130, alignment: .trailing)
         }
     }
@@ -348,7 +348,7 @@ struct CaptureViewer: View {
                     pill(nil, icon: "chevron.left", help: "Newer (←)") { step(-1) }
                         .keyboardShortcut(.leftArrow, modifiers: [])
                     Spacer()
-                    Text(url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "VertCam ", with: ""))
+                    Text(url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "BetterBooth ", with: ""))
                         .font(.caption2)
                         .padding(.horizontal, 6).padding(.vertical, 3)
                         .background(.black.opacity(0.5), in: Capsule())

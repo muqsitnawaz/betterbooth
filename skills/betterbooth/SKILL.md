@@ -20,9 +20,9 @@ captures from the command line without opening a window:
   Failure prints `error: <reason>` and exits 1, so you never parse a log or guess whether a file
   was written.
 - **It waits for a real picture.** It waits for the camera to deliver live frames (up to 6
-  seconds), then lets exposure settle for a second before capturing. ffmpeg's `-f avfoundation`
-  can hang with no output when a camera sends nothing (a closed MacBook lid, for one). BetterBooth
-  says why instead: `error: MacBook Pro Camera is off while the lid is closed`.
+  seconds), then lets exposure settle for a second before capturing. With a MacBook's lid
+  closed, ffmpeg's `-f avfoundation` sat waiting with no output in testing; BetterBooth says why
+  instead: `error: MacBook Pro Camera is off while the lid is closed`.
 - **Framing is done for you.** Ask for `9:16` and you get a centred 9:16 crop at the size you
   asked for. BetterBooth picks the camera mode that keeps the most real pixels: the MacBook camera
   has a native 1080×1920 portrait mode, so vertical photos are not cut from a landscape frame.
@@ -30,8 +30,8 @@ captures from the command line without opening a window:
   enough, and `--list` prints every camera and microphone.
 - **Video with synced sound.** H.264 + AAC `.mp4`, picture and sound on one clock, at 23.98,
   24, 30 or 60 fps, from any connected microphone.
-- **Strict input.** An invalid value is an error that names the valid ones (`error: --fps takes
-  23.98, 24, 30 or 60`), never a silent fallback.
+- **Strict input.** An unknown option or invalid value is an error that names the valid ones
+  (`error: --fps takes 23.98, 24, 30 or 60`), never a silent fallback to defaults.
 - **It leaves the person's setup alone.** Command-line captures never change the camera,
   rotation or other settings the app remembers.
 
@@ -40,8 +40,9 @@ captures from the command line without opening a window:
 Download the zip from
 [Releases](https://github.com/muqsitnawaz/betterbooth/releases/latest), unzip it and move
 `BetterBooth.app` to `/Applications`. It is signed and notarized, and needs macOS 14 or later on
-Apple silicon or Intel. The first capture asks the person for camera access, and the first
-recording with sound asks for microphone access. Those prompts need a human click.
+Apple silicon or Intel. The first capture asks for camera access, and the first recording with
+sound for microphone access. Run from a terminal or an agent, macOS may ask on behalf of that
+app rather than BetterBooth. Either way a person has to click Allow once.
 
 ## Commands
 
@@ -89,8 +90,8 @@ BetterBooth 2026-10-11 09.41.52 cam-link-4k 9x16 1080p.jpg
 BetterBooth 2026-10-11 09.40.31 cam-link-4k 9x16 1080p 30fps.mp4
 ```
 
-A recording starts once the microphone has joined, so a `--record 5` file runs about half a
-second short of 5 seconds.
+A recording starts once the microphone has joined, so a `--record 5` file runs up to a second
+short of 5 seconds.
 
 ## Recipes
 

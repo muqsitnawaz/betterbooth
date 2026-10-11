@@ -94,8 +94,8 @@ $BB --record 5 --aspect 9:16 --res 1080 --fps 24 --camera "cam link" --mic scarl
 ```
 
 `--aspect` takes either orientation (`9:16` or `16:9`), and `--rotate 90` turns the picture.
-`--camera` and `--mic` match part of a device's name. An invalid value is an error that lists the
-valid ones. Scripted runs never change the settings the app remembers. The full reference is in
+`--camera` and `--mic` match part of a device's name. An unknown option or invalid value is an
+error that lists the valid ones. Scripted runs never change the settings the app remembers. The full reference is in
 [`skills/betterbooth/SKILL.md`](skills/betterbooth/SKILL.md).
 
 ## Testing

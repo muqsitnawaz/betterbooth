@@ -3,7 +3,7 @@ import SwiftUI
 import Combine
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
-    private let scripted = CommandLine.arguments.contains("--photo") || CommandLine.arguments.contains("--record")
+    private let scripted = ["--photo", "--record", "--list"].contains { CommandLine.arguments.contains($0) }
     private lazy var camera = Camera(persists: !scripted)
     private let library = Library()
     private var statusItem: NSStatusItem!
@@ -77,20 +77,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     /// `--photo` or `--record <seconds>`, optionally with `--aspect 9:16`, `--res 1080`, `--fps 23.98`, `--camera <name>`, `--mic <name>`, `--rotate 90`:
-    /// capture without showing UI, print the saved path, and quit.
+    /// capture without showing UI, print the saved path, and quit. `--list` prints the cameras and microphones.
     private func runScripted() -> Bool {
         let args = CommandLine.arguments
         func value(after flag: String) -> String? {
             args.firstIndex(of: flag).flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
         }
-        let photo = args.contains("--photo")
-        guard photo || args.contains("--record") else { return false }
-        let seconds = value(after: "--record").flatMap(Double.init)
-        if args.contains("--record") && !(seconds.map { $0 > 0 } ?? false) {
-            print("error: --record needs a length in seconds, such as --record 5")
+        func fail(_ message: String) -> Never {
+            print("error: \(message)")
             exit(1)
         }
-        if let (aspect, landscape) = value(after: "--aspect").flatMap(Aspect.parse) {
+        /// The value after `flag` parsed by `parse`; nil when the flag is absent, an error when its value is not one of `expected`.
+        func option<T>(_ flag: String, _ expected: String, _ parse: (String) -> T?) -> T? {
+            guard args.contains(flag) else { return nil }
+            if let parsed = value(after: flag).flatMap(parse) { return parsed }
+            fail("\(flag) takes \(expected)")
+        }
+        if args.contains("--list") {
+            print("cameras:")
+            camera.devices.forEach { print("  \($0.localizedName)\($0.isSuspended ? " (off: lid closed)" : "")") }
+            print("microphones:")
+            camera.mics.forEach { print("  \($0.localizedName)") }
+            exit(0)
+        }
+        let photo = args.contains("--photo")
+        guard photo || args.contains("--record") else { return false }
+        let seconds = option("--record", "a length in seconds, such as --record 5") { Double($0).flatMap { $0 > 0 ? $0 : nil } }
+        if let (aspect, landscape) = option("--aspect", "9:16, 4:5, 3:4, 1:1, 16:9, 5:4 or 4:3", Aspect.parse) {
             camera.config.aspect = aspect
             camera.config.landscape = landscape
         }
@@ -98,22 +111,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             let wanted = name.lowercased()
             let names = camera.devices.map { ($0, $0.localizedName.lowercased()) }
             guard let device = (names.first(where: { $0.1.hasPrefix(wanted) }) ?? names.first(where: { $0.1.contains(wanted) }))?.0 else {
-                print("error: no camera matching \(name)")
-                exit(1)
+                fail("no camera matching \(name); --list shows them")
             }
             camera.config.deviceID = device.uniqueID
         }
         if let name = value(after: "--mic")?.lowercased() {
             guard let mic = camera.mics.first(where: { $0.localizedName.lowercased().contains(name) }) else {
-                print("error: no microphone matching \(name)")
-                exit(1)
+                fail("no microphone matching \(name); --list shows them")
             }
             camera.config.micOn = true
             camera.config.micID = mic.uniqueID
         }
-        if let degrees = value(after: "--rotate").flatMap(Int.init), [0, 90, 180, 270].contains(degrees) { camera.config.rotation = degrees }
-        if let res = value(after: "--res").flatMap(Int.init).flatMap(Resolution.init(rawValue:)) { camera.config.resolution = res }
-        if let fps = value(after: "--fps").flatMap(FrameRate.init(rawValue:)) { camera.config.frameRate = fps }
+        if let degrees = option("--rotate", "0, 90, 180 or 270", { Int($0).flatMap { [0, 90, 180, 270].contains($0) ? $0 : nil } }) {
+            camera.config.rotation = degrees
+        }
+        if let res = option("--res", "720, 1080, 1440 or 2160", { Int($0).flatMap(Resolution.init(rawValue:)) }) { camera.config.resolution = res }
+        if let fps = option("--fps", "23.98, 24, 30 or 60", FrameRate.init(rawValue:)) { camera.config.frameRate = fps }
 
         func finish(_ url: URL?) {
             // After the main-queue work already pending, so a reason reported just before is printed.

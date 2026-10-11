@@ -1,5 +1,11 @@
 # BetterBooth
 
+[![Latest release](https://img.shields.io/github/v/release/muqsitnawaz/betterbooth?label=version&color=2563eb)](https://github.com/muqsitnawaz/betterbooth/releases/latest)
+[![Free and open source](https://img.shields.io/badge/price-free-16a34a)](LICENSE)
+[![MIT license](https://img.shields.io/github/license/muqsitnawaz/betterbooth?color=16a34a)](LICENSE)
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-111827?logo=apple)](#requirements)
+[![Apple silicon and Intel](https://img.shields.io/badge/Apple%20silicon%20%2B%20Intel-universal-111827)](#requirements)
+
 A better Photo Booth that lives in your menu bar and records vertical video. Click the icon for a
 live preview, then take a photo or record a video in 9:16, 4:5, 3:4 or 1:1, at 720p to 4K and
 23.98, 24, 30 or 60 fps.
@@ -24,6 +30,28 @@ Applications.
 
 Video is H.264 with AAC sound in an `.mp4`; photos are JPEG. Drag the popover off the menu bar to
 keep it open as a window.
+
+## Works with
+
+- **Your iPhone, wirelessly.** With Continuity Camera, your iPhone shows up as a camera: shoot
+  vertical photos and video on the iPhone's camera while working on your Mac.
+- **The MacBook camera, vertical for real.** 9:16 uses the camera's native 1080×1920 mode
+  instead of cutting a strip out of a landscape frame.
+- **Capture cards.** An HDMI capture card such as the Elgato Cam Link 4K turns a mirrorless or
+  DSLR camera into a source, at up to 60 fps.
+- **USB webcams and audio interfaces.** Any camera and any microphone macOS sees.
+- **A camera mounted on its side.** Turn its picture upright once and the full sensor becomes a
+  vertical frame; BetterBooth remembers it for that camera.
+- **A closed MacBook lid.** The built-in camera is off, so BetterBooth uses another connected
+  camera and switches back to your choice when it returns.
+
+## For AI agents
+
+BetterBooth captures from the command line without a window, which makes it a camera an agent
+can call: one command, the saved file's path on stdout, a reason and exit code 1 on failure.
+[`skills/betterbooth/SKILL.md`](skills/betterbooth/SKILL.md) is a ready-made skill to give your
+agent; copy the folder into your agent's skills directory (for Claude Code,
+`~/.claude/skills/`). Agents changing the code start at [`AGENTS.md`](AGENTS.md).
 
 ## Requirements
 
@@ -59,13 +87,16 @@ camera, and tells you if you pick the built-in one.
 With no window, BetterBooth captures once, prints the saved file's path and quits:
 
 ```sh
-open -n -W --stdout /dev/stdout /Applications/BetterBooth.app --args \
-  --record 5 --aspect 9:16 --res 1080 --fps 24 --camera "Cam Link" --mic Scarlett
+BB=/Applications/BetterBooth.app/Contents/MacOS/BetterBooth
+$BB --list                                    # cameras and microphones
+$BB --photo --aspect 9:16 --camera iphone
+$BB --record 5 --aspect 9:16 --res 1080 --fps 24 --camera "cam link" --mic scarlett
 ```
 
-`--photo` takes a photo instead. `--aspect` takes either orientation (`9:16` or `16:9`), and
-`--rotate 90` turns the picture. `--camera` and `--mic` match part of a device's name. Scripted
-runs never change the settings the app remembers.
+`--aspect` takes either orientation (`9:16` or `16:9`), and `--rotate 90` turns the picture.
+`--camera` and `--mic` match part of a device's name. An invalid value is an error that lists the
+valid ones. Scripted runs never change the settings the app remembers. The full reference is in
+[`skills/betterbooth/SKILL.md`](skills/betterbooth/SKILL.md).
 
 ## Testing
 

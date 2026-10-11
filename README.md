@@ -16,7 +16,7 @@ Download the latest signed and notarized app from
 [Releases](https://github.com/muqsitnawaz/betterbooth/releases/latest), unzip it and move it to
 Applications.
 
-Every control works the same way: **click to turn it on or off, right-click for its choices.**
+Every on/off control works the same way: **click to turn it on or off, right-click for its choices.**
 
 - **Camera.** The camera icon beside the aspect picker lists every connected camera.
 - **Orientation.** The rotate button (or R) turns the frame on its side: 9:16 becomes 16:9, 4:5
@@ -26,7 +26,7 @@ Every control works the same way: **click to turn it on or off, right-click for 
   default. A level meter beside it moves as you talk.
 - **Look your best.** Blur the background (soft, medium or strong), brighten the picture, or turn
   on the ring light: a band of white light around the edge of your screen that lights your face,
-  on whichever displays you check, brighter than white on an HDR display such as a MacBook Pro's.
+  on whichever displays you check.
 - **Timer.** Click for a countdown; right-click for 3 or 10 seconds.
 - **Location.** ⋯ → Save Location writes where a photo or video was taken into the file. Off
   until you turn it on.

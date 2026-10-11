@@ -65,7 +65,7 @@ Options for `--photo` and `--record`:
 | `--camera <name>` | part of a name from `--list` | the person's chosen camera |
 | `--mic <name>` | part of a name from `--list`; turns sound on | the app's microphone setting (on, system default) |
 | `--rotate <degrees>` | `0` `90` `180` `270`, clockwise | that camera's saved rotation |
-| `--blur <pixels>` | background blur radius at 1080p, `1` to `100`; `8` soft, `16` medium, `32` strong | the app's setting (off) |
+| `--blur <pixels>` | background blur radius at 1080p, above `0` up to `100`; `8` soft, `16` medium, `32` strong | the app's setting (off) |
 | `--brighten <stops>` | exposure added, `-2` to `2` | the app's setting (off) |
 
 Anything you leave out follows the app's own settings, including whether sound is recorded and

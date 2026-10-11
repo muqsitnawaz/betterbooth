@@ -1,4 +1,5 @@
 import AVFoundation
+import Combine
 import CoreImage
 import CoreLocation
 import AppKit
@@ -155,6 +156,7 @@ final class Camera: NSObject, ObservableObject {
     /// The microphone's loudness, kept apart from `Camera` so only the meter redraws with it.
     let micLevel = MicLevel()
     let locator = Locator()
+    private var locatorChanges: AnyCancellable?
     /// Off for scripted captures so their flags never become the saved settings. Fixed at init
     /// because init itself can switch cameras, which saves.
     let persists: Bool
@@ -190,6 +192,9 @@ final class Camera: NSObject, ObservableObject {
     /// Keeps the person's outline steady from frame to frame.
     private let segmentationSequence = VNSequenceRequestHandler()
     private var lastLevelReport = Date.distantPast
+    /// The person mask from the last frame Vision segmented, in output coordinates.
+    private var lastMask: CIImage?
+    private var askedForMic = false
     private var pool: CVPixelBufferPool?
     private var poolSize: CGSize = .zero
     private var lastFrame: CVPixelBuffer?
@@ -238,6 +243,8 @@ final class Camera: NSObject, ObservableObject {
             nc.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in self?.refreshDevices() }
         }
         refreshDevices()
+        // The menu shows whether location is allowed; it observes the camera, not the locator.
+        locatorChanges = locator.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
     }
 
     // MARK: Configuration
@@ -453,12 +460,22 @@ final class Camera: NSObject, ObservableObject {
     /// its level shows before you record. Left alone during a recording; recordingEnded() catches up.
     private func updateMic() {
         guard !isRecording else { return }
-        if running, config.micOn, AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+        if running, config.micOn, !askedForMic, AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+            askedForMic = true
             AVCaptureDevice.requestAccess(for: .audio) { _ in DispatchQueue.main.async { self.updateMic() } }
         }
         let mic = running ? wantedMic : nil
         if mic == nil { micLevel.value = 0 }
         sessionQueue.async { self.setMic(mic) }
+    }
+
+    /// Where a capture is being taken, when Save Location is on; says so when there's no fix.
+    private func capturedLocation() -> CLLocation? {
+        guard config.saveLocation else { return nil }
+        if let location = locator.recent { return location }
+        report(locator.denied ? "Saved without location: allow BetterBooth in System Settings → Privacy & Security → Location Services"
+                              : "Saved without location: no fix yet")
+        return nil
     }
 
     private func updateLocation() {
@@ -505,7 +522,7 @@ final class Camera: NSObject, ObservableObject {
         }
         let url = Library.newURL(ext: "jpg", tags: fileTags(video: false))
         var properties: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: 0.92]
-        if config.saveLocation, let location = locator.recent { properties[kCGImagePropertyGPSDictionary] = location.exifGPS }
+        if let location = capturedLocation() { properties[kCGImagePropertyGPSDictionary] = location.exifGPS }
         frameQueue.async {
             guard let frame = self.lastFrame,
                   let cg = self.ciContext.createCGImage(CIImage(cvPixelBuffer: frame), from: CGRect(x: 0, y: 0, width: CVPixelBufferGetWidth(frame), height: CVPixelBufferGetHeight(frame)), format: .RGBA8, colorSpace: self.colorSpace)
@@ -535,7 +552,7 @@ final class Camera: NSObject, ObservableObject {
         }
         let url = Library.newURL(ext: "mp4", tags: fileTags(video: true))
         let size = config.outputSize, rate = mode.rate
-        let location = config.saveLocation ? locator.recent : nil
+        let location = capturedLocation()
         let mic = wantedMic
         let audio = mic != nil
         if config.micOn && !audio {
@@ -704,12 +721,18 @@ extension Camera: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDa
                 .transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         }
         var image = place(sourceImage)
-        if s.blur > 0, let mask = personMask(source, extent: sourceImage.extent) {
+        if s.blur > 0 {
+            // Segmented after turning, so a camera on its side still shows Vision an upright
+            // person. When Vision fails on a frame the last mask stands in, so a frame never goes
+            // out with the room sharp; with no mask yet the whole frame is blurred.
+            if let mask = personMask(image) { lastMask = mask }
             let background = image.clampedToExtent().applyingGaussianBlur(sigma: s.blur).cropped(to: image.extent)
-            image = image.applyingFilter("CIBlendWithMask", parameters: [
+            image = lastMask.map { image.applyingFilter("CIBlendWithMask", parameters: [
                 kCIInputBackgroundImageKey: background,
-                kCIInputMaskImageKey: place(mask),
-            ])
+                kCIInputMaskImageKey: $0,
+            ]) } ?? background
+        } else {
+            lastMask = nil
         }
         if s.exposure != 0 {
             image = image.applyingFilter("CIExposureAdjust", parameters: [kCIInputEVKey: s.exposure])
@@ -734,12 +757,14 @@ extension Camera: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDa
         return out
     }
 
-    /// Where the person is in `source`, white on black, stretched over `extent`.
-    private func personMask(_ source: CVPixelBuffer, extent: CGRect) -> CIImage? {
-        guard (try? segmentationSequence.perform([segmentation], on: source)) != nil,
+    /// Where the person is in `picture`, white on black, stretched over it.
+    private func personMask(_ picture: CIImage) -> CIImage? {
+        let extent = picture.extent
+        guard (try? segmentationSequence.perform([segmentation], on: picture)) != nil,
               let mask = segmentation.results?.first?.pixelBuffer else { return nil }
         let image = CIImage(cvPixelBuffer: mask)
-        return image.transformed(by: CGAffineTransform(scaleX: extent.width / image.extent.width, y: extent.height / image.extent.height))
+        return image.transformed(by: CGAffineTransform(scaleX: extent.width / image.extent.width, y: extent.height / image.extent.height)
+            .translatedBy(x: extent.minX, y: extent.minY))
     }
 
     private func show(_ frame: CVPixelBuffer, at time: CMTime) {

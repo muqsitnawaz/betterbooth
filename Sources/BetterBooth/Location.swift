@@ -10,7 +10,7 @@ final class Locator: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     var denied: Bool { status == .denied || status == .restricted }
     /// A fix from the last 10 minutes; an older one may be somewhere else.
-    var recent: CLLocation? { latest.flatMap { $0.timestamp.timeIntervalSinceNow > -600 ? $0 : nil } }
+    var recent: CLLocation? { latest.flatMap { $0.horizontalAccuracy >= 0 && $0.timestamp.timeIntervalSinceNow > -600 ? $0 : nil } }
 
     override init() {
         status = manager.authorizationStatus
@@ -62,7 +62,7 @@ extension CLLocation {
         return gps
     }
 
-    /// "+37.3349-122.0090+012.5/", the ISO 6709 form a video's location is written in.
+    /// "+37.3349-122.0090+12.5/", the ISO 6709 form a video's location is written in.
     var iso6709: String {
         var text = String(format: "%+08.4f%+09.4f", coordinate.latitude, coordinate.longitude)
         if verticalAccuracy > 0 { text += String(format: "%+.1f", altitude) }

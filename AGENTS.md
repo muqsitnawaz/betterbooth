@@ -31,7 +31,8 @@ Each of these fixed a real bug. Keep them when changing the code.
 - **The microphone is in the session whenever the camera runs with sound on** (`updateMic`), so
   its level shows before recording. It joins before `startRunning()`, because joining a running
   session pauses the camera for most of a second, and it never changes during a recording.
-- **One gesture rule in the UI.** A click turns a control on or off; a right-click shows its
+- **One gesture rule in the UI.** A click turns an on/off control on or off (the camera and ⋯
+  menus just open); a right-click shows its
   choices (`.contextMenu`). Picking a choice also turns the control on.
 - **Location is off by default** and is only written when the person turns on Save Location:
   EXIF GPS in photos, an ISO 6709 `location` tag in videos. Scripted runs never save it.

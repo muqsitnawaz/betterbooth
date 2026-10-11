@@ -10,7 +10,7 @@ A better Photo Booth that lives in your menu bar and records vertical video. Cli
 live preview, then take a photo or record a video in 9:16, 4:5, 3:4 or 1:1, at 720p to 4K and
 23.98, 24, 30 or 60 fps.
 
-<p align="center"><img src="docs/preview.png" width="600" alt="BetterBooth's popover under the menu bar: a 9:16 live preview, the aspect picker, resolution and frame rate, and recent captures"></p>
+<p align="center"><img src="docs/preview.png" width="600" alt="BetterBooth's popover under the menu bar: a 9:16 live preview, the camera menu, aspect picker and rotate button, resolution and frame rate, the mirror, blur, brighten, ring light, mic with its level meter, timer and more controls, and recent captures"></p>
 
 Download the latest signed and notarized app from
 [Releases](https://github.com/muqsitnawaz/betterbooth/releases/latest), unzip it and move it to

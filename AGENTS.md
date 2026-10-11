@@ -37,7 +37,8 @@ Each of these fixed a real bug. Keep them when changing the code.
   stands in, and the chosen one comes back when it reappears.
 - **Command-line captures never persist.** `Camera(persists:)` is fixed at init, because init
   itself can switch cameras and save.
-- **Fail closed.** An invalid command-line value is an error naming the valid ones.
+- **Fail closed.** An unknown command-line option or an invalid value is an error naming the
+  valid ones, never a capture with defaults.
 
 ## Verify on real hardware
 

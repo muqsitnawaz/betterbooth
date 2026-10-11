@@ -93,6 +93,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             if let parsed = value(after: flag).flatMap(parse) { return parsed }
             fail("\(flag) takes \(expected)")
         }
+        // A mistyped flag such as --phot must fail, not open the app or capture with defaults.
+        let known: Set = ["--list", "--photo", "--record", "--aspect", "--res", "--fps", "--camera", "--mic", "--rotate"]
+        if let unknown = args.dropFirst().first(where: { $0.hasPrefix("--") && !known.contains($0) }) {
+            fail("unknown option \(unknown); the options are \(known.sorted().joined(separator: " "))")
+        }
+        let name = { (flag: String) in option(flag, "part of a name from --list") { $0.isEmpty || $0.hasPrefix("--") ? nil : $0 } }
         if args.contains("--list") {
             print("cameras:")
             camera.devices.forEach { print("  \($0.localizedName)\($0.isSuspended ? " (off: lid closed)" : "")") }
@@ -102,12 +108,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
         let photo = args.contains("--photo")
         guard photo || args.contains("--record") else { return false }
-        let seconds = option("--record", "a length in seconds, such as --record 5") { Double($0).flatMap { $0 > 0 ? $0 : nil } }
+        let seconds = option("--record", "a length in seconds, such as --record 5") { Double($0).flatMap { $0 > 0 && $0.isFinite ? $0 : nil } }
         if let (aspect, landscape) = option("--aspect", "9:16, 4:5, 3:4, 1:1, 16:9, 5:4 or 4:3", Aspect.parse) {
             camera.config.aspect = aspect
             camera.config.landscape = landscape
         }
-        if let name = value(after: "--camera") {
+        if let name = name("--camera") {
             let wanted = name.lowercased()
             let names = camera.devices.map { ($0, $0.localizedName.lowercased()) }
             guard let device = (names.first(where: { $0.1.hasPrefix(wanted) }) ?? names.first(where: { $0.1.contains(wanted) }))?.0 else {
@@ -115,7 +121,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             }
             camera.config.deviceID = device.uniqueID
         }
-        if let name = value(after: "--mic")?.lowercased() {
+        if let name = name("--mic")?.lowercased() {
             guard let mic = camera.mics.first(where: { $0.localizedName.lowercased().contains(name) }) else {
                 fail("no microphone matching \(name); --list shows them")
             }

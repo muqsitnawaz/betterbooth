@@ -17,7 +17,8 @@ if pgrep -f "$RUNNING" >/dev/null; then
   pkill -TERM -f "$RUNNING" || true
 fi
 if [ -d /Applications/BetterBooth.app ]; then
-  osascript -e 'tell application "Finder" to delete POSIX file "/Applications/BetterBooth.app"' >/dev/null
+  osascript -e 'tell application "Finder" to delete POSIX file "/Applications/BetterBooth.app"' >/dev/null \
+    || echo "couldn't move the old BetterBooth.app to the Trash; delete it yourself"
 fi
 
 ditto build/Camera.app /Applications/Camera.app

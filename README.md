@@ -16,17 +16,26 @@ Download the latest signed and notarized app from
 [Releases](https://github.com/muqsitnawaz/betterbooth/releases/latest), unzip it and move it to
 Applications.
 
-- **Orientation.** The button beside the aspect picker (or R) turns the frame on its side: 9:16
-  becomes 16:9, 4:5 becomes 5:4.
-- **A camera mounted sideways.** ⋯ → Turn Picture turns its picture upright, remembered per camera,
-  so a camera on its side records full-frame vertical video.
-- **Microphone.** The mic button picks any connected microphone, the system default, or no sound.
+Every control works the same way: **click to turn it on or off, right-click for its choices.**
+
+- **Camera.** The camera icon beside the aspect picker lists every connected camera.
+- **Orientation.** The rotate button (or R) turns the frame on its side: 9:16 becomes 16:9, 4:5
+  becomes 5:4. Right-click it when a camera is mounted sideways or upside down to turn its picture
+  upright, remembered per camera, so a camera on its side records full-frame vertical video.
+- **Microphone.** Click to mute; right-click to pick any connected microphone or the system
+  default. A level meter beside it moves as you talk.
+- **Look your best.** Blur the background (soft, medium or strong), brighten the picture, or turn
+  on the ring light: a band of white light around the edge of your screen that lights your face,
+  on whichever displays you check, brighter than white on an HDR display such as a MacBook Pro's.
+- **Timer.** Click for a countdown; right-click for 3 or 10 seconds.
+- **Location.** ⋯ → Save Location writes where a photo or video was taken into the file. Off
+  until you turn it on.
 - **The most real pixels.** For each aspect and frame rate BetterBooth picks the camera mode that keeps
   the most of the sensor: on a MacBook camera, 9:16 uses its native 1080×1920 mode. Rates a camera
   can't deliver are greyed out, and sizes above its real pixels are marked "upscaled".
 - **Searchable files.** Captures go to `~/Pictures/BetterBooth`, named with the camera, aspect,
   resolution and frame rate: `BetterBooth 2026-10-11 01.18.09 cam-link-4k 9x16 1080p 30fps.mp4`.
-  Click one in the strip to view or play it in place; drag it out to share.
+  Click one in the strip to view or play it in place, then share it, or drag it out.
 
 Video is H.264 with AAC sound in an `.mp4`; photos are JPEG. Drag the popover off the menu bar to
 keep it open as a window.
@@ -74,8 +83,10 @@ hoc, which runs the same, but macOS asks for camera permission again after each 
 
 ## Permissions
 
-BetterBooth asks for the camera the first time you open it, and for the microphone the first time
-you record with sound. If you said no, turn it back on in System Settings → Privacy & Security →
+BetterBooth asks for the camera the first time you open it, for the microphone the first time you
+open it with sound on, and for your location the first time you turn on Save Location. While the
+popover is open with sound on, the microphone is live for the level meter, so macOS shows its
+microphone indicator. If you said no, turn it back on in System Settings → Privacy & Security →
 Camera (or Microphone). Without microphone access, videos record without sound and BetterBooth says
 so.
 
@@ -94,6 +105,7 @@ $BB --record 5 --aspect 9:16 --res 1080 --fps 24 --camera "cam link" --mic scarl
 ```
 
 `--aspect` takes either orientation (`9:16` or `16:9`), and `--rotate 90` turns the picture.
+`--blur 16` blurs the background and `--brighten 1` adds a stop of exposure.
 `--camera` and `--mic` match part of a device's name. An unknown option or invalid value is an
 error that lists the valid ones. Scripted runs never change the settings the app remembers. The full reference is in
 [`skills/betterbooth/SKILL.md`](skills/betterbooth/SKILL.md).

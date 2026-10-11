@@ -7,7 +7,7 @@
     <key>CFBundleName</key><string>BetterBooth</string>
     <key>CFBundleDisplayName</key><string>BetterBooth</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.2.1</string>
+    <key>CFBundleShortVersionString</key><string>0.3.0</string>
     <key>CFBundleVersion</key><string>1</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
@@ -17,5 +17,7 @@
     <key>NSHighResolutionCapable</key><true/>
     <key>NSCameraUsageDescription</key><string>BetterBooth shows your camera so you can take photos and record videos.</string>
     <key>NSMicrophoneUsageDescription</key><string>BetterBooth records sound with your videos when the microphone is on.</string>
+    <key>NSLocationUsageDescription</key><string>BetterBooth saves where a photo or video was taken when Save Location is on.</string>
+    <key>NSLocationWhenInUseUsageDescription</key><string>BetterBooth saves where a photo or video was taken when Save Location is on.</string>
 </dict>
 </plist>

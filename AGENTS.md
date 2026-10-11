@@ -22,13 +22,19 @@ Each of these fixed a real bug. Keep them when changing the code.
   place the session, format and render state are brought in line with it. Add a setting as a
   `Config` field, never as a separate property with its own update path.
 - **One buffer for everything.** Each frame is mirrored, then rotated, then cropped and scaled
-  once (`render`). The preview, the recording and photos all use that buffer, so what you see is
+  once (`render`), then the background blur and brightening are applied; the person mask for the
+  blur goes through the same `place` steps as the picture. The preview, the recording and photos all use that buffer, so what you see is
   what is saved.
 - **Frame duration is clamped to the format's range.** An out-of-range duration raises an
   Objective-C exception Swift can't catch (this crashed on the Cam Link 4K). Set the format and
   durations again after `startRunning()` and after the mic joins, because both reset them.
-- **The microphone joins only while recording,** and before the `Recorder` exists. Joining
-  pauses the camera for most of a second; the file starts at the first frame after that.
+- **The microphone is in the session whenever the camera runs with sound on** (`updateMic`), so
+  its level shows before recording. It joins before `startRunning()`, because joining a running
+  session pauses the camera for most of a second, and it never changes during a recording.
+- **One gesture rule in the UI.** A click turns a control on or off; a right-click shows its
+  choices (`.contextMenu`). Picking a choice also turns the control on.
+- **Location is off by default** and is only written when the person turns on Save Location:
+  EXIF GPS in photos, an ISO 6709 `location` tag in videos. Scripted runs never save it.
 - **Timestamps.** Samples more than 1 s off the host clock are dropped (a Continuity Camera's
   first frames can be minutes off), and video and audio appends must strictly increase.
 - **The feed state comes from frames that actually arrive.** It is live, waiting, black,

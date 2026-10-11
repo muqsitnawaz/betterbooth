@@ -9,6 +9,11 @@ struct ContentView: View {
     @ObservedObject var library: Library
     @AppStorage("mode") private var mode: Mode = .photo
     @AppStorage("timer") private var timerOn = false
+    @AppStorage("timerSeconds") private var timerSeconds = 3
+    @AppStorage("ringLight") private var ringLightOn = false
+    @AppStorage("ringLightStrength") private var ringLightStrength = RingLight.Strength.medium.rawValue
+    /// The displays the ring light shines from, by ID; empty is the main display.
+    @AppStorage("ringLightDisplays") private var ringLightDisplays = ""
     @State private var countdown: Int?
     @State private var flash = false
     @State private var countdownTask: Task<Void, Never>?
@@ -26,7 +31,7 @@ struct ContentView: View {
         case .live, .off: return nil
         case .waiting: return "Waiting for \(camera.deviceName)…"
         case .black: return "The picture from \(camera.deviceName) is black.\nIf it shouldn't be, check the camera is on and plugged in."
-        case .suspended: return "\(camera.deviceName) is off while the lid is closed.\nPick another camera from the ⋯ menu."
+        case .suspended: return "\(camera.deviceName) is off while the lid is closed.\nPick another camera from the camera menu."
         case .noCamera: return "No camera connected"
         }
     }
@@ -39,13 +44,33 @@ struct ContentView: View {
             if !library.items.isEmpty { strip }
         }
         .padding(14)
-        .frame(width: max(previewSize.width, 420) + 28)
+        .frame(width: max(previewSize.width, 470) + 28)
         .animation(.easeInOut(duration: 0.25), value: camera.config.ratio)
         // Closing the popover stops the camera; a countdown must not fire into a stopped camera.
         .onDisappear {
             countdownTask?.cancel()
             countdown = nil
         }
+        // The ring light is on only while the camera is.
+        .onChange(of: ringLight, initial: true) { _, strength in
+            if let strength { RingLight.show(strength, on: ringLightScreens) } else { RingLight.hide() }
+        }
+        .onChange(of: ringLightDisplays) { if let ringLight { RingLight.show(ringLight, on: ringLightScreens) } }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
+            if let ringLight { RingLight.show(ringLight, on: ringLightScreens) }
+        }
+    }
+
+    private var chosenDisplays: Set<String> { Set(ringLightDisplays.split(separator: ",").map(String.init)) }
+
+    /// The chosen displays that are connected, or the main one when none of them is.
+    private var ringLightScreens: [NSScreen] {
+        let chosen = NSScreen.screens.filter { chosenDisplays.contains($0.displayID) }
+        return chosen.isEmpty ? [NSScreen.main].compactMap { $0 } : chosen
+    }
+
+    private var ringLight: RingLight.Strength? {
+        ringLightOn && camera.feed != .off ? RingLight.Strength(rawValue: ringLightStrength) ?? .medium : nil
     }
 
     // MARK: Preview
@@ -111,9 +136,12 @@ struct ContentView: View {
 
     // MARK: Controls
 
+    // Every icon does one thing on a click, and a right-click shows its choices.
     private var controls: some View {
         VStack(spacing: 10) {
             HStack(spacing: 8) {
+                cameraMenu
+
                 Picker("Aspect ratio", selection: $camera.config.aspect) {
                     ForEach(Aspect.allCases) { Text($0.label(landscape: camera.config.landscape)).tag($0) }
                 }
@@ -121,20 +149,10 @@ struct ContentView: View {
                 .labelsHidden()
                 .help("Aspect ratio: 9:16 for Reels, Shorts and TikTok")
 
-                let landscape = camera.config.landscape
-                Button { camera.config.landscape.toggle() } label: {
-                    Image(systemName: landscape ? "rectangle.landscape.rotate" : "rectangle.portrait.rotate")
-                        .frame(width: 22)
-                }
-                .buttonStyle(.borderless)
-                .imageScale(.large)
-                .keyboardShortcut("r", modifiers: [])
-                .disabled(camera.config.aspect.isSquare)
-                .help(camera.config.aspect.isSquare ? "A square has no orientation"
-                      : "Turn the frame to \(landscape ? "portrait" : "landscape") (\(camera.config.aspect.label(landscape: !landscape))) · R")
+                rotateButton
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Picker("Resolution", selection: $camera.config.resolution) {
                     ForEach(Resolution.allCases) { r in
                         Text(r.rawValue > camera.mode.nativeShort ? "\(r.label) (upscaled)" : r.label).tag(r)
@@ -151,32 +169,64 @@ struct ContentView: View {
 
                 Spacer(minLength: 0)
 
-                toggle(camera.config.mirrored, on: "arrow.left.and.right.righttriangle.left.righttriangle.right.fill",
+                toggle(camera.config.mirrored, icon: "arrow.left.and.right.righttriangle.left.righttriangle.right.fill",
                        off: "arrow.left.and.right.righttriangle.left.righttriangle.right", help: "Mirror") {
                     camera.config.mirrored.toggle()
                 }
-                micMenu
-                toggle(timerOn, on: "timer", off: "timer", help: "3-second timer") { timerOn.toggle() }
 
-                Menu {
-                    Picker("Camera", selection: $camera.config.deviceID) {
-                        ForEach(camera.devices, id: \.uniqueID) { Text($0.localizedName).tag(Optional($0.uniqueID)) }
+                toggle(camera.config.blurBackground, icon: "person.and.background.dotted",
+                       help: "Blur the background · right-click for how much") { camera.config.blurBackground.toggle() }
+                    .contextMenu {
+                        Picker("Blur", selection: choosing(\.blurRadius, turnsOn: \.blurBackground)) {
+                            Text("Soft").tag(8.0)
+                            Text("Medium").tag(16.0)
+                            Text("Strong").tag(32.0)
+                        }
+                        .pickerStyle(.inline)
+                    }
+
+                toggle(camera.config.brighten, icon: "sun.max.fill", off: "sun.max",
+                       help: "Brighten the picture · right-click for how much") { camera.config.brighten.toggle() }
+                    .contextMenu {
+                        Picker("Brighten", selection: choosing(\.brightness, turnsOn: \.brighten)) {
+                            Text("A Little").tag(0.5)
+                            Text("More").tag(1.0)
+                            Text("A Lot").tag(1.5)
+                        }
+                        .pickerStyle(.inline)
+                    }
+
+                toggle(ringLightOn, icon: "lightbulb.fill", off: "lightbulb",
+                       help: "Ring light: light your face from the edges of the screen · right-click for how bright") { ringLightOn.toggle() }
+                    .contextMenu {
+                        Picker("Ring Light", selection: Binding(get: { ringLightStrength }, set: { ringLightStrength = $0; ringLightOn = true })) {
+                            ForEach(RingLight.Strength.allCases) { Text($0.label).tag($0.rawValue) }
+                        }
+                        .pickerStyle(.inline)
+                        if NSScreen.screens.count > 1 {
+                            Section("Displays") {
+                                ForEach(NSScreen.screens, id: \.displayID) { screen in
+                                    Toggle(screen.localizedName, isOn: displayBinding(screen))
+                                }
+                            }
+                        }
+                    }
+
+                mic
+
+                toggle(timerOn, icon: "timer", badge: timerOn ? "\(timerSeconds)" : nil,
+                       help: timerOn ? "\(timerSeconds)-second timer · right-click for others" : "No timer · right-click for 3 or 10 seconds") {
+                    timerOn.toggle()
+                }
+                .contextMenu {
+                    Picker("Timer", selection: Binding(get: { timerSeconds }, set: { timerSeconds = $0; timerOn = true })) {
+                        Text("3 Seconds").tag(3)
+                        Text("10 Seconds").tag(10)
                     }
                     .pickerStyle(.inline)
-                    // For a camera mounted on its side or upside down; remembered per camera.
-                    Picker("Turn Picture", selection: $camera.config.rotation) {
-                        ForEach([0, 90, 180, 270], id: \.self) { Text($0 == 0 ? "Upright" : "\($0)° Clockwise").tag($0) }
-                    }
-                    .pickerStyle(.menu)
-                    Divider()
-                    Button("Open BetterBooth Folder") { NSWorkspace.shared.open(Library.folder) }
-                    Button("Quit BetterBooth") { NSApp.terminate(nil) }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
                 }
-                .menuIndicator(.hidden)
-                .fixedSize()
-                .help("Camera and more")
+
+                moreMenu
             }
             .pickerStyle(.menu)
             .labelsHidden()
@@ -186,41 +236,115 @@ struct ContentView: View {
         .disabled(camera.isRecording)
     }
 
-    /// "off", "" for the system default, or a microphone's ID.
-    private var micChoice: Binding<String> {
-        Binding(
-            get: { camera.config.micOn ? camera.config.micID ?? "" : "off" },
-            set: { choice in
-                camera.config.micOn = choice != "off"
-                if choice != "off" { camera.config.micID = choice.isEmpty ? nil : choice }
-            })
-    }
-
-    private var micMenu: some View {
-        let systemDefault = AVCaptureDevice.default(for: .audio)?.localizedName
-        let chosen = camera.mics.first { $0.uniqueID == camera.config.micID }?.localizedName ?? systemDefault
+    private var cameraMenu: some View {
+        let current = camera.devices.first { $0.uniqueID == camera.config.deviceID }
         return Menu {
-            Picker("Microphone", selection: micChoice) {
-                Text("No Sound").tag("off")
-                Text(systemDefault.map { "System Default (\($0))" } ?? "System Default").tag("")
-                ForEach(camera.mics, id: \.uniqueID) { Text($0.localizedName).tag($0.uniqueID) }
+            Picker("Camera", selection: $camera.config.deviceID) {
+                ForEach(camera.devices, id: \.uniqueID) { device in
+                    Text(device.isSuspended ? "\(device.localizedName) (off: lid closed)" : device.localizedName)
+                        .tag(Optional(device.uniqueID))
+                }
             }
             .pickerStyle(.inline)
         } label: {
-            Image(systemName: camera.config.micOn ? "mic.fill" : "mic.slash")
-                .foregroundStyle(camera.config.micOn ? Color.accentColor : Color.secondary)
+            Image(systemName: current?.deviceType == .continuityCamera ? "iphone" : "web.camera")
                 .frame(width: 22)
         }
         .menuIndicator(.hidden)
         .fixedSize()
-        .help(camera.config.micOn ? "Recording sound from \(chosen ?? "the default microphone")" : "No sound; click to pick a microphone")
+        .buttonStyle(.borderless)
+        .imageScale(.large)
+        .help("Camera: \(camera.deviceName)")
     }
 
-    private func toggle(_ isOn: Bool, on: String, off: String, help: String, action: @escaping () -> Void) -> some View {
+    /// A click turns the frame between portrait and landscape; a right-click turns the camera's
+    /// own picture, for a camera mounted on its side or upside down (remembered per camera).
+    private var rotateButton: some View {
+        let landscape = camera.config.landscape, square = camera.config.aspect.isSquare
+        return Button { if !square { camera.config.landscape.toggle() } } label: {
+            Image(systemName: landscape ? "rectangle.landscape.rotate" : "rectangle.portrait.rotate")
+                .foregroundStyle(square ? Color.secondary.opacity(0.5) : Color.primary)
+                .frame(width: 22)
+        }
+        .buttonStyle(.borderless)
+        .imageScale(.large)
+        .keyboardShortcut("r", modifiers: [])
+        .help((square ? "A square has no orientation" : "Turn the frame to \(landscape ? "portrait" : "landscape") (\(camera.config.aspect.label(landscape: !landscape))) · R")
+              + " · right-click if the camera is mounted sideways")
+        .contextMenu {
+            Picker("Camera Mounted", selection: $camera.config.rotation) {
+                ForEach([0, 90, 180, 270], id: \.self) { Text($0 == 0 ? "Upright" : "Turn Picture \($0)° Clockwise").tag($0) }
+            }
+            .pickerStyle(.inline)
+        }
+    }
+
+    private var mic: some View {
+        let systemDefault = AVCaptureDevice.default(for: .audio)?.localizedName
+        let chosen = camera.mics.first { $0.uniqueID == camera.config.micID }?.localizedName ?? systemDefault ?? "the default microphone"
+        return HStack(spacing: 2) {
+            toggle(camera.config.micOn, icon: "mic.fill", off: "mic.slash",
+                   help: camera.config.micOn ? "Recording sound from \(chosen) · click to mute, right-click to pick a microphone"
+                                             : "Muted · click to record sound, right-click to pick a microphone") {
+                camera.config.micOn.toggle()
+            }
+            .contextMenu {
+                Picker("Microphone", selection: Binding(get: { camera.config.micID }, set: { camera.config.micID = $0; camera.config.micOn = true })) {
+                    Text(systemDefault.map { "System Default (\($0))" } ?? "System Default").tag(String?.none)
+                    ForEach(camera.mics, id: \.uniqueID) { Text($0.localizedName).tag(Optional($0.uniqueID)) }
+                }
+                .pickerStyle(.inline)
+            }
+            if camera.config.micOn { LevelMeter(level: camera.micLevel) }
+        }
+    }
+
+    private var moreMenu: some View {
+        Menu {
+            Toggle(camera.locator.denied ? "Save Location (off in System Settings)" : "Save Location in Photos and Videos",
+                   isOn: $camera.config.saveLocation)
+            if camera.config.saveLocation && camera.locator.denied {
+                Button("Open Location Settings") {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
+                }
+            }
+            Button("macOS Video Effects…") { AVCaptureDevice.showSystemUserInterface(.videoEffects) }
+            Divider()
+            Button("Open BetterBooth Folder") { NSWorkspace.shared.open(Library.folder) }
+            Button("Quit BetterBooth") { NSApp.terminate(nil) }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("More")
+    }
+
+    /// Checks a display on or off for the ring light; with none checked it uses the main display.
+    private func displayBinding(_ screen: NSScreen) -> Binding<Bool> {
+        Binding(
+            get: { ringLightScreens.contains(screen) },
+            set: { on in
+                var chosen = Set(ringLightScreens.map(\.displayID))
+                if on { chosen.insert(screen.displayID) } else { chosen.remove(screen.displayID) }
+                ringLightDisplays = chosen.sorted().joined(separator: ",")
+                ringLightOn = true
+            })
+    }
+
+    /// A binding for an effect's amount: picking one also turns the effect on.
+    private func choosing(_ amount: WritableKeyPath<Config, Double>, turnsOn flag: WritableKeyPath<Config, Bool>) -> Binding<Double> {
+        Binding(get: { camera.config[keyPath: amount] }, set: { camera.config[keyPath: amount] = $0; camera.config[keyPath: flag] = true })
+    }
+
+    private func toggle(_ isOn: Bool, icon: String, off: String? = nil, badge: String? = nil, help: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: isOn ? on : off)
+            Image(systemName: isOn ? icon : off ?? icon)
                 .foregroundStyle(isOn ? Color.accentColor : Color.secondary)
                 .frame(width: 22)
+                .overlay(alignment: .bottomTrailing) {
+                    if let badge { Text(badge).font(.system(size: 8, weight: .bold)).foregroundStyle(Color.accentColor).offset(x: 4, y: 3) }
+                }
         }
         .help(help)
     }
@@ -262,6 +386,7 @@ struct ContentView: View {
                         .contextMenu {
                             Button("Open") { NSWorkspace.shared.open(url) }
                             Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                            ShareLink("Share…", item: url)
                             Button("Copy") {
                                 NSPasteboard.general.clearContents()
                                 NSPasteboard.general.writeObjects([url as NSURL])
@@ -293,7 +418,7 @@ struct ContentView: View {
         countdownTask?.cancel()
         countdownTask = Task { @MainActor in
             if timerOn {
-                for n in stride(from: 3, through: 1, by: -1) {
+                for n in stride(from: timerSeconds, through: 1, by: -1) {
                     withAnimation(.spring(duration: 0.3)) { countdown = n }
                     try? await Task.sleep(for: .seconds(1))
                 }
@@ -327,7 +452,7 @@ struct CaptureViewer: View {
         ZStack {
             Color.black
             if isVideo, let player {
-                VideoPlayer(player: player)
+                PlayerView(player: player)
             } else if let image {
                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
             }
@@ -336,6 +461,9 @@ struct CaptureViewer: View {
                     pill("Camera", icon: "chevron.left", help: "Back to the camera (Esc)", action: close)
                         .keyboardShortcut(.cancelAction)
                     Spacer()
+                    ShareLink(item: url) { pillLabel(nil, icon: "square.and.arrow.up") }
+                        .buttonStyle(.plain)
+                        .help("Share")
                     pill(nil, icon: "arrow.up.forward.app", help: "Open in \(isVideo ? "QuickTime" : "Preview")") { NSWorkspace.shared.open(url) }
                     pill(nil, icon: "folder", help: "Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
                     pill(nil, icon: "trash", help: "Move to Trash") {
@@ -377,19 +505,21 @@ struct CaptureViewer: View {
     }
 
     private func pill(_ title: String?, icon: String, help: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 3) {
-                Image(systemName: icon)
-                if let title { Text(title) }
-            }
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 8).padding(.vertical, 5)
-            .background(.black.opacity(0.55), in: Capsule())
-            .foregroundStyle(.white)
-            .contentShape(Capsule())
+        Button(action: action) { pillLabel(title, icon: icon) }
+            .buttonStyle(.plain)
+            .help(help)
+    }
+
+    private func pillLabel(_ title: String?, icon: String) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: icon)
+            if let title { Text(title) }
         }
-        .buttonStyle(.plain)
-        .help(help)
+        .font(.caption.weight(.semibold))
+        .padding(.horizontal, 8).padding(.vertical, 5)
+        .background(.black.opacity(0.55), in: Capsule())
+        .foregroundStyle(.white)
+        .contentShape(Capsule())
     }
 }
 
@@ -412,6 +542,24 @@ struct ShutterButton: View {
         }
         .buttonStyle(.plain)
         .help(mode == .photo ? "Take photo (Space)" : recording ? "Stop recording (Space)" : "Start recording (Space)")
+    }
+}
+
+/// The microphone's loudness as a small upright bar: green, then yellow near full scale.
+struct LevelMeter: View {
+    @ObservedObject var level: MicLevel
+    var body: some View {
+        let value = CGFloat(level.value)
+        Capsule()
+            .fill(Color.secondary.opacity(0.25))
+            .frame(width: 4, height: 18)
+            .overlay(alignment: .bottom) {
+                Capsule()
+                    .fill(value > 0.85 ? Color.yellow : Color.green)
+                    .frame(width: 4, height: max(2, 18 * value))
+                    .animation(.linear(duration: 0.08), value: value)
+            }
+            .help("Microphone level")
     }
 }
 
@@ -457,6 +605,21 @@ struct Thumbnail: View {
         .help(url.lastPathComponent)
         .task(id: url) { image = await Library.thumbnail(for: url, size: 128) }
     }
+}
+
+/// AVKit's own player view. SwiftUI's `VideoPlayer` aborts at launch of a video here: its
+/// overlay needs AVKit loaded, and nothing else in the app links AVKit.
+struct PlayerView: NSViewRepresentable {
+    let player: AVPlayer
+
+    func makeNSView(context: Context) -> AVPlayerView {
+        let view = AVPlayerView()
+        view.controlsStyle = .floating
+        view.player = player
+        return view
+    }
+
+    func updateNSView(_ view: AVPlayerView, context: Context) { view.player = player }
 }
 
 struct PreviewView: NSViewRepresentable {

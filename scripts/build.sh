@@ -19,6 +19,9 @@ iconutil -c icns build/AppIcon.iconset -o build/BetterBooth.app/Contents/Resourc
 # Signed with your Developer ID if the keychain has one, so camera permission survives rebuilds.
 # Otherwise ad hoc: it runs the same, but macOS asks for camera permission again after each rebuild.
 IDENTITY=$(security find-identity -p codesigning -v | awk -F'"' '/Developer ID Application/ {print $2; exit}')
+if [ "$TIMESTAMP" = --timestamp ] && [ -z "$IDENTITY" ]; then
+  echo "build.sh --release needs a Developer ID Application identity in the keychain"; exit 1
+fi
 codesign --force --options runtime $TIMESTAMP --entitlements Resources/BetterBooth.entitlements \
   --sign "${IDENTITY:--}" build/BetterBooth.app
 codesign --verify --strict build/BetterBooth.app

@@ -26,8 +26,10 @@ for spec in "9:16 1080 1080x1920" "4:5 1080 1080x1350" "5:4 1080 1350x1080" "1:1
   done
 done
 
+# The first microphone from --list, so a mic muted in the app doesn't fail the sound checks.
+MIC=$("$BIN" --list | sed -n '/^microphones:/{n;s/^  //p;}')
 for fps in 24 30; do
-  f=$(capture --record 3 --aspect 9:16 --fps "$fps")
+  f=$(capture --record 3 --aspect 9:16 --fps "$fps" --mic "$MIC")
   check "video 9:16 size at $fps fps" "$(size "$f")" "1080x1920"
   frames=$(ffprobe -v error -count_frames -select_streams v -show_entries stream=nb_read_frames -of csv=p=0 "$f" 2>/dev/null)
   seconds=$(ffprobe -v error -select_streams v -show_entries stream=duration -of csv=p=0 "$f" 2>/dev/null)

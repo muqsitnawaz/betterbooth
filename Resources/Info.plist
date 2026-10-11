@@ -17,7 +17,7 @@
     <key>NSHighResolutionCapable</key><true/>
     <key>NSCameraUsageDescription</key><string>Shows your camera so you can take photos and record videos.</string>
     <key>NSMicrophoneUsageDescription</key><string>Records sound with your videos when the microphone is on.</string>
-    <key>NSLocationUsageDescription</key><string>Saves where a photo or video was taken when Save Location is on.</string>
-    <key>NSLocationWhenInUseUsageDescription</key><string>Saves where a photo or video was taken when Save Location is on.</string>
+    <key>NSLocationUsageDescription</key><string>Saves where a photo or video was taken when Location is on in Camera Settings.</string>
+    <key>NSLocationWhenInUseUsageDescription</key><string>Saves where a photo or video was taken when Location is on in Camera Settings.</string>
 </dict>
 </plist>

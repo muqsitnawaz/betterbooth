@@ -6,7 +6,7 @@ description: Take a photo or record a video from a Mac's cameras with one shell 
 # Camera
 
 Camera is a free, open-source menu-bar camera for macOS
-([github.com/muqsitnawaz/betterbooth](https://github.com/muqsitnawaz/betterbooth)). The same app
+([github.com/muqsitnawaz/camera](https://github.com/muqsitnawaz/camera)). The same app
 captures from the command line without opening a window:
 
 ```sh
@@ -28,9 +28,9 @@ captures from the command line without opening a window:
   has a native 1080×1920 portrait mode, so vertical photos are not cut from a landscape frame.
 - **Cameras by name, not index.** `--camera iphone`, `--camera "cam link"`: part of the name is
   enough, and `--list` prints every camera and microphone.
-- **Background blur and brightening built in.** `--blur 16` keeps the person sharp and blurs the
-  room behind them, with a person mask from Apple's Vision framework; `--brighten 1` lifts a dim
-  room by a stop.
+- **Background blur and brightening built in.** `--blur soft` keeps the person sharp and blurs
+  the room behind them, with a person mask from Apple's Vision framework; `--brighten more` lifts
+  a dim room.
 - **Video with synced sound.** H.264 + AAC `.mp4`, picture and sound on one clock, at 23.98,
   24, 30 or 60 fps, from any connected microphone.
 - **Strict input.** An unknown option or invalid value is an error that names the valid ones
@@ -41,7 +41,7 @@ captures from the command line without opening a window:
 ## Install
 
 Download the zip from
-[Releases](https://github.com/muqsitnawaz/betterbooth/releases/latest), unzip it and move
+[Releases](https://github.com/muqsitnawaz/camera/releases/latest), unzip it and move
 `Camera.app` to `/Applications`. It is signed and notarized, and needs macOS 14 or later on
 Apple silicon or Intel. The first capture asks for camera access, and the first recording with
 sound for microphone access. Run from a terminal or an agent, macOS may ask on behalf of that
@@ -65,8 +65,8 @@ Options for `--photo` and `--record`:
 | `--camera <name>` | part of a name from `--list` | the person's chosen camera |
 | `--mic <name>` | part of a name from `--list`; turns sound on | the app's microphone setting (on, system default) |
 | `--rotate <degrees>` | `0` `90` `180` `270`, clockwise | that camera's saved rotation |
-| `--blur <pixels>` | background blur radius at 1080p, above `0` up to `100`; `8` soft, `16` medium, `32` strong | the app's setting (off) |
-| `--brighten <stops>` | exposure added, `-2` to `2` | the app's setting (off) |
+| `--blur` | `soft` `strong` | the app's setting (off) |
+| `--brighten` | `more` `most` | the app's setting (off) |
 
 Anything you leave out follows the app's own settings, including whether sound is recorded and
 mirroring (on by default, like a selfie camera). A `--photo` never opens the microphone, and
@@ -115,7 +115,7 @@ f=$($BB --photo --camera iphone --aspect 9:16) || f=$($BB --photo --camera iphon
 $BB --record 10 --camera "cam link" --aspect 9:16 --res 1080 --fps 60 --mic scarlett
 
 # A vertical photo with the background blurred, in a dim room
-$BB --photo --aspect 9:16 --blur 16 --brighten 1
+$BB --photo --aspect 9:16 --blur soft --brighten more
 
 # Check what you got
 ffprobe -v error -show_entries stream=codec_type,width,height,r_frame_rate -of csv "$f"

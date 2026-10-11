@@ -1,44 +1,55 @@
 # Camera
 
-[![Latest release](https://img.shields.io/github/v/release/muqsitnawaz/betterbooth?label=version&color=2563eb)](https://github.com/muqsitnawaz/betterbooth/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/muqsitnawaz/camera?label=version&color=2563eb)](https://github.com/muqsitnawaz/camera/releases/latest)
 [![Free and open source](https://img.shields.io/badge/price-free-16a34a)](LICENSE)
-[![MIT license](https://img.shields.io/github/license/muqsitnawaz/betterbooth?color=16a34a)](LICENSE)
+[![MIT license](https://img.shields.io/github/license/muqsitnawaz/camera?color=16a34a)](LICENSE)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-111827?logo=apple)](#requirements)
 [![Apple silicon and Intel](https://img.shields.io/badge/Apple%20silicon%20%2B%20Intel-universal-111827)](#requirements)
 
-The camera app macOS never shipped. It lives in your menu bar and records vertical video: click
-the icon for a live preview, then take a photo or record a video in 9:16, 4:5, 3:4 or 1:1, at 720p
-to 4K and 23.98, 24, 30 or 60 fps.
+The camera app macOS never shipped. It lives in your menu bar: click the icon for a live
+preview, then take a photo or record a video in 9:16, 4:5, 3:4 or 1:1, at 720p to 4K and 23.98,
+24, 30 or 60 fps.
 
-Formerly BetterBooth. Version 0.4 keeps your settings and permissions, and moves your captures from
-`~/Pictures/BetterBooth` to `~/Pictures/Camera`; delete the old `BetterBooth.app` once Camera runs.
-
-<p align="center"><img src="docs/preview.png" width="600" alt="Camera's popover under the menu bar: a 9:16 live preview, the camera menu, aspect picker and rotate button, resolution and frame rate, the mirror, blur, brighten, ring light, mic with its level meter, timer and more controls, and recent captures"></p>
+<p align="center"><img src="docs/preview.png" width="600" alt="Camera's popover under the menu bar: a 9:16 live preview with the camera's name and the HD badge on top, the effects button at its corner, the aspect picker, PHOTO and VIDEO, the timer, shutter and folder, and recent captures"></p>
 
 Download the latest signed and notarized app from
-[Releases](https://github.com/muqsitnawaz/betterbooth/releases/latest), unzip it and move it to
-Applications.
+[Releases](https://github.com/muqsitnawaz/camera/releases/latest), unzip it and move it to
+Applications. Formerly BetterBooth: version 0.4 keeps your settings and permissions, and moves
+your captures from `~/Pictures/BetterBooth` to `~/Pictures/Camera`.
 
-Every on/off control works the same way: **click to turn it on or off, right-click for its choices.**
+## A tour
 
-- **Camera.** The camera icon beside the aspect picker lists every connected camera.
+<table>
+<tr>
+<td align="center" width="33%"><img src="docs/effects.png" width="220" alt="The effects tray over the picture: Portrait blur, Brighten and Ring light, each Off or one of two levels"><br><b>Effects</b> sit over the picture, so you see each change as you make it</td>
+<td align="center" width="33%"><img src="docs/settings.png" width="220" alt="Camera Settings over the picture: Resolution, Frame rate, Mirror, Location and Quit Camera"><br><b>Camera Settings</b> open from the HD badge: resolution, frame rate, mirror, location</td>
+<td align="center" width="33%"><img src="docs/viewer.png" width="220" alt="A photo shown in place of the preview, with Back to Camera, the date, Share and Delete on top and arrows at the edges"><br><b>Your captures</b> open in place, like Photos: the date, Share and Delete</td>
+</tr>
+</table>
+
+[**Try the interactive design prototype**](https://muqsitnawaz.github.io/camera/design/): every
+control in its popover is clickable, and each change in 0.4 is listed beside it with the feedback
+that asked for it.
+
+- **Camera.** The camera's name sits on the preview; click it to pick any connected camera.
+- **Photo or Video.** The microphone and its level meter appear in Video only. Click the mic to
+  mute; right-click it to pick a microphone.
 - **Orientation.** The rotate button (or R) turns the frame on its side: 9:16 becomes 16:9, 4:5
   becomes 5:4. Right-click it when a camera is mounted sideways or upside down to turn its picture
-  upright, remembered per camera, so a camera on its side records full-frame vertical video.
-- **Microphone.** Click to mute; right-click to pick any connected microphone or the system
-  default. A level meter beside it moves as you talk.
-- **Look your best.** Blur the background (soft, medium or strong), brighten the picture, or turn
-  on the ring light: a band of white light around the edge of your screen that lights your face,
-  on whichever displays you check.
+  upright, remembered per camera.
+- **Effects.** The button at the preview's corner opens Portrait blur, Brighten, and the ring
+  light: a band of white light around the edge of your screen that lights your face. Right-click
+  the ring light to pick which displays it shines from.
+- **Camera Settings.** The badge on the preview shows the format (HD, 4K, and the frame rate in
+  Video) and opens its settings. Rates a camera can't deliver aren't offered, and a size above the
+  camera's real pixels says it is upscaled. Location writes where a capture was taken into the
+  file, and is off until you turn it on. Quit is here too.
 - **Timer.** Click for a countdown; right-click for 3 or 10 seconds.
-- **Location.** ⋯ → Save Location writes where a photo or video was taken into the file. Off
-  until you turn it on.
-- **The most real pixels.** For each aspect and frame rate Camera picks the camera mode that keeps
-  the most of the sensor: on a MacBook camera, 9:16 uses its native 1080×1920 mode. Rates a camera
-  can't deliver are greyed out, and sizes above its real pixels are marked "upscaled".
+- **Viewing.** Click a capture in the strip to see it in place; double-click to open it in Preview
+  or QuickTime. The shutter takes you back to the camera.
 - **Searchable files.** Captures go to `~/Pictures/Camera`, named with the camera, aspect,
   resolution and frame rate: `Camera 2026-10-11 01.18.09 cam-link-4k 9x16 1080p 30fps.mp4`.
-  Click one in the strip to view or play it in place, then share it, or drag it out.
+  The folder button opens it.
 
 Video is H.264 with AAC sound in an `.mp4`; photos are JPEG. Drag the popover off the menu bar to
 keep it open as a window.
@@ -87,9 +98,9 @@ hoc, which runs the same, but macOS asks for camera permission again after each 
 ## Permissions
 
 Camera asks for the camera the first time you open it, for the microphone the first time you
-open it with sound on, and for your location the first time you turn on Save Location. While the
-popover is open with sound on, the microphone is live for the level meter, so macOS shows its
-microphone indicator. If you said no, turn it back on in System Settings → Privacy & Security →
+switch to Video with sound on, and for your location the first time you turn on Location. While
+the popover is open in Video with sound on, the microphone is live for the level meter, so macOS
+shows its microphone indicator; Photo never opens it. If you said no, turn it back on in System Settings → Privacy & Security →
 Camera (or Microphone). Without microphone access, videos record without sound and Camera says
 so.
 
@@ -108,7 +119,7 @@ $BB --record 5 --aspect 9:16 --res 1080 --fps 24 --camera "cam link" --mic scarl
 ```
 
 `--aspect` takes either orientation (`9:16` or `16:9`), and `--rotate 90` turns the picture.
-`--blur 16` blurs the background and `--brighten 1` adds a stop of exposure.
+`--blur soft` (or `strong`) blurs the background and `--brighten more` (or `most`) lifts a dim room.
 `--camera` and `--mic` match part of a device's name. An unknown option or invalid value is an
 error that lists the valid ones. Scripted runs never change the settings the app remembers. The full reference is in
 [`skills/camera/SKILL.md`](skills/camera/SKILL.md).

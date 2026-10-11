@@ -22,6 +22,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let host = NSHostingController(rootView: ContentView(camera: camera, library: library))
         host.sizingOptions = .preferredContentSize
         popover.contentViewController = host
+        // Dark like a viewfinder, whatever the system appearance.
+        popover.appearance = NSAppearance(named: .darkAqua)
         popover.behavior = .transient
         popover.animates = true
         popover.delegate = self

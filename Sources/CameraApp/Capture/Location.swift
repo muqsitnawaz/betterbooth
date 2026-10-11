@@ -1,7 +1,7 @@
 import CoreLocation
 import ImageIO
 
-/// Where the Mac is, while the camera runs with Save Location on. Main queue only.
+/// Where the Mac is, while the camera runs with Location on. Main queue only.
 final class Locator: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published private(set) var status: CLAuthorizationStatus
     private let manager = CLLocationManager()

@@ -1,132 +1,11 @@
 import AVFoundation
+import AppKit
 import Combine
 import CoreImage
 import CoreLocation
-import AppKit
 import UniformTypeIdentifiers
 import Vision
 
-/// A frame shape, named in its portrait form. `Config.landscape` lays it on its side, so 9:16
-/// and 16:9 are one shape turned, not two choices.
-enum Aspect: String, CaseIterable, Identifiable, Codable {
-    case r9x16 = "9:16", r4x5 = "4:5", r3x4 = "3:4", r1x1 = "1:1"
-    var id: String { rawValue }
-    private var parts: (short: Int, long: Int) {
-        let p = rawValue.split(separator: ":").compactMap { Int($0) }
-        return (p[0], p[1])
-    }
-    var isSquare: Bool { self == .r1x1 }
-    /// "9:16" upright, "16:9" on its side.
-    func label(landscape: Bool) -> String { landscape ? "\(parts.long):\(parts.short)" : rawValue }
-    /// Width over height.
-    func ratio(landscape: Bool) -> CGFloat {
-        landscape ? CGFloat(parts.long) / CGFloat(parts.short) : CGFloat(parts.short) / CGFloat(parts.long)
-    }
-
-    /// The shape and orientation written as "16:9" or "9:16".
-    static func parse(_ text: String) -> (Aspect, landscape: Bool)? {
-        for aspect in allCases {
-            if text == aspect.label(landscape: false) { return (aspect, false) }
-            if text == aspect.label(landscape: true) { return (aspect, true) }
-        }
-        return nil
-    }
-}
-
-enum Resolution: Int, CaseIterable, Identifiable, Codable {
-    case p720 = 720, p1080 = 1080, p1440 = 1440, p2160 = 2160
-    var id: Int { rawValue }
-    var label: String { self == .p2160 ? "4K" : "\(rawValue)p" }
-}
-
-enum FrameRate: String, CaseIterable, Identifiable, Codable {
-    case f23_98 = "23.98", f24 = "24", f30 = "30", f60 = "60"
-    var id: String { rawValue }
-    var label: String { "\(rawValue) fps" }
-    var value: Double { self == .f23_98 ? 24_000.0 / 1001 : Double(rawValue)! }
-    var frameDuration: CMTime { self == .f23_98 ? CMTime(value: 1001, timescale: 24_000) : CMTime(value: 1, timescale: CMTimeScale(value)) }
-
-    func fits(_ range: AVFrameRateRange) -> Bool {
-        range.minFrameRate <= value + 0.01 && range.maxFrameRate >= value - 0.01
-    }
-}
-
-/// Everything the person chose. The camera is always configured from one of these, in one place
-/// (`Camera.apply`), so no setting can leave another half-applied.
-struct Config: Equatable, Codable {
-    var deviceID: String?
-    var aspect: Aspect = .r9x16
-    var landscape = false
-    var resolution: Resolution = .p1080
-    var frameRate: FrameRate = .f30
-    var mirrored = true
-    var micOn = true
-    /// The microphone to record from; nil is the system's default input.
-    var micID: String?
-    /// Clockwise turn per camera, for one mounted sideways or upside down.
-    var rotations: [String: Int] = [:]
-    /// Each effect keeps its amount while it is off, so a click turns back on what you had.
-    var brighten = false
-    /// Exposure added, in stops.
-    var brightness = 1.0
-    var blurBackground = false
-    /// Blur radius in pixels at 1080p; larger outputs scale it.
-    var blurRadius = 16.0
-    /// Writes where a capture was taken into the file. Off by default: files get shared.
-    var saveLocation = false
-
-    var rotation: Int {
-        get { deviceID.flatMap { rotations[$0] } ?? 0 }
-        set { if let deviceID { rotations[deviceID] = ((newValue % 360) + 360) % 360 } }
-    }
-    var aspectLabel: String { aspect.label(landscape: landscape) }
-    var ratio: CGFloat { aspect.ratio(landscape: landscape) }
-
-    /// Output size with the chosen resolution on the short side, both sides even for the encoder.
-    var outputSize: CGSize {
-        let short = resolution.rawValue
-        let long = Int((CGFloat(short) * max(ratio, 1 / ratio) / 2).rounded()) * 2
-        return ratio >= 1 ? CGSize(width: long, height: short) : CGSize(width: short, height: long)
-    }
-
-    /// Short side of the largest region of a `width`×`height` frame this shape can be cut from.
-    func nativeShort(width: Int, height: Int) -> Int {
-        let w = CGFloat(width), h = CGFloat(height)
-        let crop = w / h > ratio ? CGSize(width: h * ratio, height: h) : CGSize(width: w, height: w / ratio)
-        return Int(min(crop.width, crop.height))
-    }
-
-    init() {}
-
-    /// Every field is optional so a config saved by an older build keeps what it can, rotations
-    /// above all, instead of resetting to defaults.
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        deviceID = try c.decodeIfPresent(String.self, forKey: .deviceID)
-        if let v = try? c.decodeIfPresent(Aspect.self, forKey: .aspect) { aspect = v }
-        if let wide = try? c.decodeIfPresent(Bool.self, forKey: .landscape) { landscape = wide }
-        if let v = try? c.decodeIfPresent(Resolution.self, forKey: .resolution) { resolution = v }
-        if let v = try? c.decodeIfPresent(FrameRate.self, forKey: .frameRate) { frameRate = v }
-        if let v = try? c.decodeIfPresent(Bool.self, forKey: .mirrored) { mirrored = v }
-        if let v = try? c.decodeIfPresent(Bool.self, forKey: .micOn) { micOn = v }
-        micID = try? c.decodeIfPresent(String.self, forKey: .micID)
-        if let v = try? c.decodeIfPresent([String: Int].self, forKey: .rotations) { rotations = v }
-        if let v = try? c.decodeIfPresent(Bool.self, forKey: .brighten) { brighten = v }
-        if let v = try? c.decodeIfPresent(Double.self, forKey: .brightness) { brightness = v }
-        if let v = try? c.decodeIfPresent(Bool.self, forKey: .blurBackground) { blurBackground = v }
-        if let v = try? c.decodeIfPresent(Double.self, forKey: .blurRadius) { blurRadius = v }
-        if let v = try? c.decodeIfPresent(Bool.self, forKey: .saveLocation) { saveLocation = v }
-    }
-
-    static func load() -> Config {
-        UserDefaults.standard.data(forKey: "config").flatMap { try? JSONDecoder().decode(Config.self, from: $0) } ?? Config()
-    }
-    func save() {
-        if let data = try? JSONEncoder().encode(self) { UserDefaults.standard.set(data, forKey: "config") }
-    }
-}
-
-/// What the chosen camera can actually do with the current config.
 struct CameraMode: Equatable {
     var supportedRates: Set<FrameRate> = []
     /// The rate in use: the chosen one, or the nearest the camera has.
@@ -135,12 +14,9 @@ struct CameraMode: Equatable {
     var nativeShort = 0
 }
 
-/// Owns the capture session and the single render pipeline. Every frame is turned, cropped to the
-/// chosen aspect, scaled to the chosen resolution and mirrored once; that same buffer is shown in
-/// the preview, written to a recording, and kept for the next photo, so files match the preview.
+/// The capture session and the one render path whose buffer feeds the preview, recordings and photos.
 final class Camera: NSObject, ObservableObject {
     enum Access { case unknown, granted, denied }
-    /// What the preview is getting, judged from the frames that actually arrive.
     enum Feed: Equatable { case off, waiting, live, black, suspended, noCamera }
 
     @Published var config: Config { didSet { configChanged(from: oldValue) } }
@@ -157,8 +33,7 @@ final class Camera: NSObject, ObservableObject {
     let micLevel = MicLevel()
     let locator = Locator()
     private var locatorChanges: AnyCancellable?
-    /// Off for scripted captures so their flags never become the saved settings. Fixed at init
-    /// because init itself can switch cameras, which saves.
+    /// Off for scripted captures; fixed at init because init can already switch cameras and save.
     let persists: Bool
     var isRecording: Bool { recordingSince != nil }
     var deviceName: String { devices.first { $0.uniqueID == config.deviceID }?.localizedName ?? "the camera" }
@@ -189,10 +64,8 @@ final class Camera: NSObject, ObservableObject {
         request.outputPixelFormat = kCVPixelFormatType_OneComponent8
         return request
     }()
-    /// Keeps the person's outline steady from frame to frame.
     private let segmentationSequence = VNSequenceRequestHandler()
     private var lastLevelReport = Date.distantPast
-    /// The person mask from the last frame Vision segmented, in output coordinates.
     private var lastMask: CIImage?
     private var askedForMic = false
     private var pool: CVPixelBufferPool?
@@ -274,9 +147,7 @@ final class Camera: NSObject, ObservableObject {
         suspensionWatches = devices.map { device in
             device.observe(\.isSuspended) { [weak self] _, _ in DispatchQueue.main.async { self?.refreshDevices() } }
         }
-        // The camera you chose whenever it works; otherwise stay on the current one, or stand in
-        // with the built-in camera, then any other. A suspended camera is used only when no other
-        // works. Never mid-recording: recordingEnded() catches up.
+        // Chosen, then current, then built-in, then any; suspended cameras last; never mid-recording.
         func pick(_ cameras: [AVCaptureDevice]) -> String? {
             [chosenDeviceID, config.deviceID].compactMap { $0 }.first { id in cameras.contains { $0.uniqueID == id } }
                 ?? (cameras.first { $0.deviceType == .builtInWideAngleCamera } ?? cameras.first)?.uniqueID
@@ -291,7 +162,6 @@ final class Camera: NSObject, ObservableObject {
         apply()
     }
 
-    /// Brings the session, the camera's format and the render settings in line with `config`.
     private func apply() {
         let config = config
         let device = devices.first { $0.uniqueID == config.deviceID }
@@ -330,8 +200,7 @@ final class Camera: NSObject, ObservableObject {
             let w = Int(sideways ? d.height : d.width), h = Int(sideways ? d.width : d.height)
             return (config.nativeShort(width: w, height: h), -w * h)
         }
-        // The mode that runs at the rate and keeps the most real pixels once turned and cropped,
-        // such as the MacBook camera's 1080×1920 mode for 9:16.
+        // The mode that keeps the most real pixels once turned and cropped.
         guard let rate, let format = device.formats
             .filter({ $0.videoSupportedFrameRateRanges.contains(where: rate.fits) })
             .max(by: { score($0) < score($1) }),
@@ -340,9 +209,7 @@ final class Camera: NSObject, ObservableObject {
             mode = CameraMode()
             return report("\(device.localizedName) offers no video mode BetterBooth can use")
         }
-        // AVFoundation raises an uncatchable exception for a duration outside the format's range,
-        // and fixed-rate cameras such as the Cam Link 4K report 30 fps as a duration that is not
-        // exactly 1/30, so the duration is clamped into the range the camera reported.
+        // A duration outside the range is an uncatchable exception (Cam Link 4K's 30 fps isn't exactly 1/30).
         let duration = min(max(rate.frameDuration, range.minFrameDuration), range.maxFrameDuration)
         mode = CameraMode(supportedRates: rates, rate: rate, nativeShort: score(format).0)
         sessionQueue.async {
@@ -352,7 +219,7 @@ final class Camera: NSObject, ObservableObject {
         }
     }
 
-    /// Session queue only. Swaps the video input when the camera changed; leaves the mic alone.
+    /// Session queue only.
     private func setCamera(_ device: AVCaptureDevice?) {
         let cameras = session.inputs.compactMap { $0 as? AVCaptureDeviceInput }.filter { $0.device.hasMediaType(.video) }
         guard cameras.first?.device != device else { return }
@@ -371,8 +238,7 @@ final class Camera: NSObject, ObservableObject {
         }
     }
 
-    /// Session queue only. Sets the camera's format and frame rate. Starting or reconfiguring
-    /// the session puts the camera back on its defaults, so this runs again after each.
+    /// Session queue. Runs again after every start or reconfigure, which reset the format.
     private func applyMode() {
         guard let m = appliedMode,
               session.inputs.contains(where: { ($0 as? AVCaptureDeviceInput)?.device == m.device }) else { return }
@@ -430,9 +296,7 @@ final class Camera: NSObject, ObservableObject {
         frameQueue.async { self.lastFrame = nil }
     }
 
-    /// Main queue. The feed is live while frames keep arriving; a camera can stay connected and
-    /// send nothing (a Continuity Camera whose phone moved away) or send black (a capture card
-    /// whose HDMI source went to sleep).
+    /// Main queue. Judged from frames that arrive: a connected camera can send nothing or black.
     private func updateFeed() {
         guard running else { return }
         let next: Feed
@@ -449,15 +313,13 @@ final class Camera: NSObject, ObservableObject {
         feed = next
     }
 
-    /// The microphone to record from: the chosen one while it is connected, otherwise the
-    /// system's default input; nil when sound is off or not allowed.
+    /// The chosen microphone, else the system default; nil when sound is off or not allowed.
     private var wantedMic: AVCaptureDevice? {
         guard config.micOn, AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return nil }
         return mics.first { $0.uniqueID == config.micID } ?? AVCaptureDevice.default(for: .audio)
     }
 
-    /// Main queue. The microphone is in the session whenever the camera runs with sound on, so
-    /// its level shows before you record. Left alone during a recording; recordingEnded() catches up.
+    /// Main queue. The mic stays in the session while the camera runs, for the level meter.
     private func updateMic() {
         guard !isRecording else { return }
         if running, config.micOn, !askedForMic, AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
@@ -469,7 +331,6 @@ final class Camera: NSObject, ObservableObject {
         sessionQueue.async { self.setMic(mic) }
     }
 
-    /// Where a capture is being taken, when Save Location is on; says so when there's no fix.
     private func capturedLocation() -> CLLocation? {
         guard config.saveLocation else { return nil }
         if let location = locator.recent { return location }
@@ -488,8 +349,7 @@ final class Camera: NSObject, ObservableObject {
 
     // MARK: Capture
 
-    /// Words for a file name that make captures searchable: camera, aspect, resolution, and for
-    /// video the frame rate, e.g. `cam-link-4k 9x16 1080p 30fps`.
+    /// File name tags, e.g. `cam-link-4k 9x16 1080p 30fps`.
     private func fileTags(video: Bool) -> [String] {
         // "Alex’s iPhone Camera" → "iphone": no owner's name in shared files, no "camera" on every one.
         let camera = deviceName
@@ -504,7 +364,6 @@ final class Camera: NSObject, ObservableObject {
                 config.resolution.label.lowercased()] + (video ? [fps] : [])
     }
 
-    /// Why a capture can't start right now, or nil when it can.
     private var notReady: String? {
         switch feed {
         // A black picture is shown as a hint only: a dark room or a covered lens is still a picture.
@@ -540,8 +399,7 @@ final class Camera: NSObject, ObservableObject {
         }
     }
 
-    /// Start and stop both pass through the session queue and then the frame queue, so a stop can
-    /// never overtake the start it ends.
+    /// Start and stop both hop session queue then frame queue, so a stop never overtakes its start.
     func startRecording() {
         guard !isRecording else { return }
         if let notReady { return report(notReady) }
@@ -560,8 +418,7 @@ final class Camera: NSObject, ObservableObject {
         }
         recordingSince = Date()
         sessionQueue.async {
-            // Normally already in; adding the microphone pauses the camera for most of a second,
-            // so it joins before the file starts, which begins at the first frame after that.
+            // Joining pauses the camera, so it happens before the file starts.
             self.setMic(mic)
             self.frameQueue.async {
                 do {
@@ -592,9 +449,7 @@ final class Camera: NSObject, ObservableObject {
         }
     }
 
-    /// Main queue. The one place a recording ends, however it ended: settings frozen during the
-    /// recording catch up (a camera unplugged meanwhile is replaced), and a stop asked for while
-    /// recording happens now.
+    /// Main queue. The one place a recording ends; frozen settings and a pending stop catch up.
     private func recordingEnded() {
         recordingSince = nil
         refreshDevices()
@@ -604,8 +459,7 @@ final class Camera: NSObject, ObservableObject {
         }
     }
 
-    /// Session queue only. The microphone is in the video session itself, so sound and picture
-    /// share one clock. Puts `mic` in the session, or takes every microphone out for nil.
+    /// Session queue. One session for sound and picture keeps them on one clock.
     private func setMic(_ mic: AVCaptureDevice?) {
         let inputs = session.inputs.compactMap { $0 as? AVCaptureDeviceInput }.filter { $0.device.hasMediaType(.audio) }
         guard inputs.map(\.device.uniqueID) != [mic?.uniqueID].compactMap({ $0 }) else { return }
@@ -621,8 +475,7 @@ final class Camera: NSObject, ObservableObject {
 
 extension Camera: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        // Every camera here stamps frames on the host clock. A Continuity Camera's first frames can
-        // carry a time from its own clock, minutes off, which would stretch a file to half an hour.
+        // A Continuity Camera's first frames can be minutes off the host clock.
         let time = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
         guard abs((CMClockGetTime(CMClockGetHostTimeClock()) - time).seconds) < 1 else { return }
         if output === audioOutput {
@@ -650,8 +503,7 @@ extension Camera: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDa
         }
     }
 
-    /// Frame queue. Publishes the loudness of mono float samples about 20 times a second, as 0
-    /// for silence (-60 dBFS and below) up to 1 for full scale.
+    /// Frame queue. Loudness at about 20 Hz: 0 at -60 dBFS, 1 at full scale.
     private func reportLevel(_ sample: CMSampleBuffer) {
         let now = Date()
         guard now.timeIntervalSince(lastLevelReport) > 0.05, let block = CMSampleBufferGetDataBuffer(sample) else { return }
@@ -666,7 +518,6 @@ extension Camera: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDa
         DispatchQueue.main.async { self.micLevel.value = level }
     }
 
-    /// True when a grid of samples across the frame is all near black.
     private static func isBlack(_ buffer: CVPixelBuffer) -> Bool {
         guard CVPixelBufferGetPixelFormatType(buffer) == kCVPixelFormatType_32BGRA,
               CVPixelBufferLockBaseAddress(buffer, .readOnly) == kCVReturnSuccess else { return false }
@@ -687,10 +538,7 @@ extension Camera: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDa
         let size = s.size
         guard size.width > 0, size.height > 0 else { return nil }
         let sourceImage = CIImage(cvPixelBuffer: source)
-        // Mirror, then turn, then cut the aspect. Turning after mirroring means each press of
-        // rotate turns the picture you see a quarter clockwise, mirrored or not; and a camera on
-        // its side becomes an upright frame before the aspect is cut from it. The person mask
-        // for the background blur goes through the same steps, so it stays on the person.
+        // Mirror, then turn, then cut the aspect, so a sideways camera is upright before the crop.
         func place(_ input: CIImage) -> CIImage {
             var image = input
             if s.mirrored {
@@ -722,9 +570,7 @@ extension Camera: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDa
         }
         var image = place(sourceImage)
         if s.blur > 0 {
-            // Segmented after turning, so a camera on its side still shows Vision an upright
-            // person. When Vision fails on a frame the last mask stands in, so a frame never goes
-            // out with the room sharp; with no mask yet the whole frame is blurred.
+            // A failed frame reuses the last mask, or blurs everything, so the room never shows sharp.
             if let mask = personMask(image) { lastMask = mask }
             let background = image.clampedToExtent().applyingGaussianBlur(sigma: s.blur).cropped(to: image.extent)
             image = lastMask.map { image.applyingFilter("CIBlendWithMask", parameters: [
@@ -757,7 +603,6 @@ extension Camera: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDa
         return out
     }
 
-    /// Where the person is in `picture`, white on black, stretched over it.
     private func personMask(_ picture: CIImage) -> CIImage? {
         let extent = picture.extent
         guard (try? segmentationSequence.perform([segmentation], on: picture)) != nil,
@@ -790,94 +635,6 @@ enum CamError: LocalizedError {
     var errorDescription: String? { if case .message(let m) = self { return m }; return nil }
 }
 
-/// Writes rendered frames and microphone samples to an H.264/AAC MP4. Used only on the frame queue.
-final class Recorder {
-    private let url: URL
-    private let writer: AVAssetWriter
-    private let videoInput: AVAssetWriterInput
-    private let adaptor: AVAssetWriterInputPixelBufferAdaptor
-    private let audioInput: AVAssetWriterInput?
-    private var startTime: CMTime?
-    private var lastVideo = CMTime.negativeInfinity
-    private var lastAudio = CMTime.negativeInfinity
-    var failure: String? { writer.error?.localizedDescription }
-
-    init(url: URL, size: CGSize, frameRate: FrameRate, audio: Bool, location: CLLocation?) throws {
-        self.url = url
-        writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
-        if let location {
-            let item = AVMutableMetadataItem()
-            item.identifier = .commonIdentifierLocation
-            item.value = location.iso6709 as NSString
-            writer.metadata = [item]
-        }
-        // About 6 bits per pixel per second at 30 fps: 12 Mbit/s for 1080p, 50 for 4K.
-        let bitrate = Double(size.width * size.height) * 6 * frameRate.value / 30
-        videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: [
-            AVVideoCodecKey: AVVideoCodecType.h264,
-            AVVideoWidthKey: Int(size.width),
-            AVVideoHeightKey: Int(size.height),
-            AVVideoCompressionPropertiesKey: [
-                AVVideoAverageBitRateKey: Int(bitrate),
-                AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
-                AVVideoExpectedSourceFrameRateKey: frameRate.value,
-            ],
-        ])
-        videoInput.expectsMediaDataInRealTime = true
-        adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: videoInput, sourcePixelBufferAttributes: nil)
-        guard writer.canAdd(videoInput) else { throw CamError.message("The video track was refused") }
-        writer.add(videoInput)
-        if audio {
-            let input = AVAssetWriterInput(mediaType: .audio, outputSettings: [
-                AVFormatIDKey: kAudioFormatMPEG4AAC,
-                AVSampleRateKey: 48_000,
-                AVNumberOfChannelsKey: 1,
-                AVEncoderBitRateKey: 128_000,
-            ])
-            input.expectsMediaDataInRealTime = true
-            guard writer.canAdd(input) else { throw CamError.message("The audio track was refused") }
-            writer.add(input)
-            audioInput = input
-        } else {
-            audioInput = nil
-        }
-        guard writer.startWriting() else { throw writer.error ?? CamError.message("The writer didn't start") }
-    }
-
-    /// Timestamps must rise; the writer fails the whole file on one that doesn't.
-    func append(video frame: CVPixelBuffer, at time: CMTime) {
-        guard time > lastVideo, writer.status == .writing else { return }
-        lastVideo = time
-        if startTime == nil {
-            writer.startSession(atSourceTime: time)
-            startTime = time
-        }
-        if videoInput.isReadyForMoreMediaData { adaptor.append(frame, withPresentationTime: time) }
-    }
-
-    func append(audio sample: CMSampleBuffer) {
-        guard let startTime, let audioInput, audioInput.isReadyForMoreMediaData,
-              writer.status == .writing else { return }
-        let time = CMSampleBufferGetPresentationTimeStamp(sample)
-        guard time >= startTime, time > lastAudio else { return }
-        lastAudio = time
-        audioInput.append(sample)
-    }
-
-    func finish(_ completion: @escaping (URL?) -> Void) {
-        guard startTime != nil else {
-            writer.cancelWriting()
-            return completion(nil)
-        }
-        videoInput.markAsFinished()
-        audioInput?.markAsFinished()
-        writer.finishWriting { [writer, url] in
-            completion(writer.status == .completed ? url : nil)
-        }
-    }
-}
-
-/// How loud the microphone is right now, 0 to 1. Main queue only.
 final class MicLevel: ObservableObject {
     @Published var value: Float = 0
 }

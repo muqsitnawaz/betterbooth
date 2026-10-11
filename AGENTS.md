@@ -8,10 +8,17 @@ by `scripts/build.sh` (no Xcode project). To *use* the app from an agent, read
 
 | File | Owns |
 |---|---|
-| `Sources/BetterBooth/Camera.swift` | `Config`, the capture session, rendering, the feed state, photos, `Recorder` |
-| `Sources/BetterBooth/ContentView.swift` | The popover UI and the in-place capture viewer |
-| `Sources/BetterBooth/Library.swift` | `~/Pictures/BetterBooth`: file names, the recent-captures list |
-| `Sources/BetterBooth/main.swift` | The menu-bar item, popover, quit handling, and command-line capture |
+| `Sources/BetterBooth/App/main.swift` | The menu-bar item, popover and quit handling |
+| `Sources/BetterBooth/App/Scripted.swift` | Command-line capture: `--list`, `--photo`, `--record` |
+| `Sources/BetterBooth/Capture/Config.swift` | `Config` and its value types: aspect, resolution, frame rate |
+| `Sources/BetterBooth/Capture/Camera.swift` | The capture session, rendering and effects, the feed state, photos, the mic level |
+| `Sources/BetterBooth/Capture/Recorder.swift` | Writing the H.264/AAC `.mp4` |
+| `Sources/BetterBooth/Capture/Library.swift` | `~/Pictures/BetterBooth`: file names, the recent-captures list |
+| `Sources/BetterBooth/Capture/Location.swift` | Location for Save Location, and its EXIF and ISO 6709 forms |
+| `Sources/BetterBooth/UI/ContentView.swift` | The popover: preview, controls, shutter, strip |
+| `Sources/BetterBooth/UI/CaptureViewer.swift` | Viewing a photo or playing a video in place |
+| `Sources/BetterBooth/UI/Components.swift` | Shutter, level meter, recording badge, thumbnail, preview layer |
+| `Sources/BetterBooth/UI/RingLight.swift` | The screen-edge ring light windows |
 | `scripts/` | `build.sh` (universal, signed), `install.sh`, `test.sh`, `release.sh`, `make-icon.swift` |
 
 ## Invariants
@@ -22,9 +29,9 @@ Each of these fixed a real bug. Keep them when changing the code.
   place the session, format and render state are brought in line with it. Add a setting as a
   `Config` field, never as a separate property with its own update path.
 - **One buffer for everything.** Each frame is mirrored, then rotated, then cropped and scaled
-  once (`render`), then the background blur and brightening are applied; the person mask for the
-  blur goes through the same `place` steps as the picture. The preview, the recording and photos all use that buffer, so what you see is
-  what is saved.
+  once (`render`), then the background blur and brightening are applied. The person mask comes
+  from the upright, cropped picture. The preview, the recording and photos all use that buffer,
+  so what you see is what is saved.
 - **Frame duration is clamped to the format's range.** An out-of-range duration raises an
   Objective-C exception Swift can't catch (this crashed on the Cam Link 4K). Set the format and
   durations again after `startRunning()` and after the mic joins, because both reset them.

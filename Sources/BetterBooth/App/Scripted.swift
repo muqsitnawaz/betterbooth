@@ -1,87 +1,8 @@
 import AppKit
-import SwiftUI
-import Combine
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
-    private let scripted = ["--photo", "--record", "--list"].contains { CommandLine.arguments.contains($0) }
-    private lazy var camera = Camera(persists: !scripted)
-    private let library = Library()
-    private var statusItem: NSStatusItem!
-    private let popover = NSPopover()
-    private var cancellables = Set<AnyCancellable>()
-
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        if runScripted() { return }
-
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.action = #selector(statusItemClicked)
-        statusItem.button?.target = self
-        statusItem.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
-        camera.$recordingSince.sink { [weak self] since in self?.updateIcon(recording: since != nil) }.store(in: &cancellables)
-
-        let host = NSHostingController(rootView: ContentView(camera: camera, library: library))
-        host.sizingOptions = .preferredContentSize
-        popover.contentViewController = host
-        popover.behavior = .transient
-        popover.animates = true
-        popover.delegate = self
-    }
-
-    private func updateIcon(recording: Bool) {
-        let name = recording ? "record.circle.fill" : "camera.fill"
-        let image = NSImage(systemSymbolName: name, accessibilityDescription: recording ? "BetterBooth, recording" : "BetterBooth")
-        image?.isTemplate = !recording
-        statusItem.button?.image = recording
-            ? image?.withSymbolConfiguration(.init(paletteColors: [.white, .systemRed]))
-            : image
-    }
-
-    @objc private func statusItemClicked() {
-        if NSApp.currentEvent?.type == .rightMouseUp {
-            let menu = NSMenu()
-            menu.addItem(withTitle: "Open BetterBooth Folder", action: #selector(openFolder), keyEquivalent: "").target = self
-            menu.addItem(.separator())
-            menu.addItem(withTitle: "Quit BetterBooth", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-            statusItem.menu = menu
-            statusItem.button?.performClick(nil)
-            statusItem.menu = nil
-            return
-        }
-        if popover.isShown {
-            popover.performClose(nil)
-        } else if let button = statusItem.button {
-            camera.start()
-            library.reload()
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
-            NSApp.activate()
-        }
-    }
-
-    @objc private func openFolder() { NSWorkspace.shared.open(Library.folder) }
-
-    // Dragging the popover off the menu bar turns it into a floating window.
-    func popoverShouldDetach(_ popover: NSPopover) -> Bool { true }
-
-    func popoverDidClose(_ notification: Notification) {
-        camera.stop()
-        RingLight.hide()
-    }
-
-    func applicationWillTerminate(_ notification: Notification) {
-        guard camera.isRecording else { return }
-        let done = DispatchSemaphore(value: 0)
-        camera.stopRecording { _ in done.signal() }
-        // Give the file up to 5 seconds to finish; never hold Quit forever on a stuck disk.
-        let deadline = Date().addingTimeInterval(5)
-        while done.wait(timeout: .now() + 0.05) == .timedOut, Date() < deadline {
-            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
-        }
-    }
-
-    /// `--photo` or `--record <seconds>`, optionally with `--aspect 9:16`, `--res 1080`, `--fps 23.98`, `--camera <name>`, `--mic <name>`, `--rotate 90`:
-    /// capture without showing UI, print the saved path, and quit. `--list` prints the cameras and microphones.
-    private func runScripted() -> Bool {
+extension AppDelegate {
+    /// `--list`, `--photo` or `--record <s>`: capture without UI, print the path, quit. Options are in SKILL.md.
+    func runScripted() -> Bool {
         let args = CommandLine.arguments
         func value(after flag: String) -> String? {
             args.firstIndex(of: flag).flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
@@ -90,7 +11,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             print("error: \(message)")
             exit(1)
         }
-        /// The value after `flag` parsed by `parse`; nil when the flag is absent, an error when its value is not one of `expected`.
         func option<T>(_ flag: String, _ expected: String, _ parse: (String) -> T?) -> T? {
             guard args.contains(flag) else { return nil }
             if let parsed = value(after: flag).flatMap(parse) { return parsed }
@@ -156,8 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             }
         }
         camera.start()
-        // Wait for a live picture (up to 6 seconds), then a second more for exposure to settle.
-        // A camera that never goes live makes the capture fail with the reason.
+        // Up to 6 s for a live picture, then 1 s for exposure; no picture fails with the reason.
         let deadline = Date().addingTimeInterval(6)
         func act() {
             if photo {
@@ -180,9 +99,3 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         return true
     }
 }
-
-let app = NSApplication.shared
-let delegate = AppDelegate()
-app.delegate = delegate
-app.setActivationPolicy(.accessory)
-app.run()

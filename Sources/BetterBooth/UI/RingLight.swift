@@ -1,11 +1,8 @@
 import AppKit
 import CoreImage
 
-/// A band of soft white light around the edges of the screen, which lights your face the way a
-/// ring light does. On a display with HDR headroom, such as a MacBook Pro's, the band is drawn
-/// brighter than white. It passes clicks through and sits below the menu bar.
+/// White light around the screen's edges that lights your face; brighter than white with HDR headroom.
 enum RingLight {
-    /// Width of the band in points.
     enum Strength: Int, CaseIterable, Identifiable {
         case soft = 60, medium = 110, bright = 170
         var id: Int { rawValue }
@@ -14,7 +11,6 @@ enum RingLight {
 
     private static var windows: [NSWindow] = []
 
-    /// Lights the edges of each of `screens`, replacing whatever was lit before.
     static func show(_ strength: Strength, on screens: [NSScreen]) {
         hide()
         windows = screens.map { screen in

@@ -1,6 +1,5 @@
-import SwiftUI
 import AVFoundation
-import AVKit
+import SwiftUI
 
 enum Mode: String { case photo, video }
 
@@ -20,7 +19,6 @@ struct ContentView: View {
     /// A capture shown in place of the live picture.
     @State private var viewing: URL?
 
-    /// The preview's long side is 512 points; the short side follows the aspect.
     private var previewSize: CGSize {
         let r = camera.config.ratio
         return r >= 1 ? CGSize(width: 512, height: (512 / r).rounded()) : CGSize(width: (512 * r).rounded(), height: 512)
@@ -51,7 +49,6 @@ struct ContentView: View {
             countdownTask?.cancel()
             countdown = nil
         }
-        // The ring light is on only while the camera is.
         .onChange(of: ringLight, initial: true) { _, strength in
             if let strength { RingLight.show(strength, on: ringLightScreens) } else { RingLight.hide() }
         }
@@ -63,7 +60,6 @@ struct ContentView: View {
 
     private var chosenDisplays: Set<String> { Set(ringLightDisplays.split(separator: ",").map(String.init)) }
 
-    /// The chosen displays that are connected, or the main one when none of them is.
     private var ringLightScreens: [NSScreen] {
         let chosen = NSScreen.screens.filter { chosenDisplays.contains($0.displayID) }
         return chosen.isEmpty ? [NSScreen.main].compactMap { $0 } : chosen
@@ -257,8 +253,7 @@ struct ContentView: View {
         .help("Camera: \(camera.deviceName)")
     }
 
-    /// A click turns the frame between portrait and landscape; a right-click turns the camera's
-    /// own picture, for a camera mounted on its side or upside down (remembered per camera).
+    /// Click: portrait or landscape. Right-click: turn a sideways camera's picture.
     private var rotateButton: some View {
         let landscape = camera.config.landscape, square = camera.config.aspect.isSquare
         return Button { if !square { camera.config.landscape.toggle() } } label: {
@@ -320,7 +315,6 @@ struct ContentView: View {
         .help("More")
     }
 
-    /// Checks a display on or off for the ring light; with none checked it uses the main display.
     private func displayBinding(_ screen: NSScreen) -> Binding<Bool> {
         Binding(
             get: { ringLightScreens.contains(screen) },
@@ -404,7 +398,7 @@ struct ContentView: View {
 
     // MARK: Actions
 
-    /// Steps through the strip from the capture being viewed; the strip is newest first.
+    /// The strip is newest first.
     private func step(_ by: Int) {
         guard let viewing, let i = library.items.firstIndex(of: viewing) else { return }
         let j = i + by
@@ -435,215 +429,6 @@ struct ContentView: View {
             } else {
                 camera.startRecording()
             }
-        }
-    }
-}
-
-/// Shows a photo, or plays a video, from the strip inside the preview area.
-struct CaptureViewer: View {
-    let url: URL
-    @ObservedObject var library: Library
-    let close: () -> Void
-    let step: (Int) -> Void
-    @State private var player: AVPlayer?
-    @State private var image: NSImage?
-
-    private var isVideo: Bool { url.pathExtension.lowercased() == "mp4" }
-
-    var body: some View {
-        ZStack {
-            Color.black
-            if isVideo, let player {
-                PlayerView(player: player)
-            } else if let image {
-                Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
-            }
-            VStack {
-                HStack(spacing: 6) {
-                    pill("Camera", icon: "chevron.left", help: "Back to the camera (Esc)", action: close)
-                        .keyboardShortcut(.cancelAction)
-                    Spacer()
-                    ShareLink(item: url) { pillLabel(nil, icon: "square.and.arrow.up") }
-                        .buttonStyle(.plain)
-                        .help("Share")
-                    pill(nil, icon: "arrow.up.forward.app", help: "Open in \(isVideo ? "QuickTime" : "Preview")") { NSWorkspace.shared.open(url) }
-                    pill(nil, icon: "folder", help: "Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-                    pill(nil, icon: "trash", help: "Move to Trash") {
-                        library.trash(url)
-                        close()
-                    }
-                }
-                Spacer()
-                HStack {
-                    pill(nil, icon: "chevron.left", help: "Newer (←)") { step(-1) }
-                        .keyboardShortcut(.leftArrow, modifiers: [])
-                    Spacer()
-                    Text(url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "BetterBooth ", with: ""))
-                        .font(.caption2)
-                        .padding(.horizontal, 6).padding(.vertical, 3)
-                        .background(.black.opacity(0.5), in: Capsule())
-                        .foregroundStyle(.white.opacity(0.9))
-                    Spacer()
-                    pill(nil, icon: "chevron.right", help: "Older (→)") { step(1) }
-                        .keyboardShortcut(.rightArrow, modifiers: [])
-                }
-                .padding(.bottom, isVideo ? 44 : 0)  // clear of the player's controls
-            }
-            .padding(8)
-        }
-        .task(id: url) {
-            player?.pause()
-            if isVideo {
-                let p = AVPlayer(url: url)
-                player = p
-                image = nil
-                p.play()
-            } else {
-                player = nil
-                image = NSImage(contentsOf: url)
-            }
-        }
-        .onDisappear { player?.pause() }
-    }
-
-    private func pill(_ title: String?, icon: String, help: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) { pillLabel(title, icon: icon) }
-            .buttonStyle(.plain)
-            .help(help)
-    }
-
-    private func pillLabel(_ title: String?, icon: String) -> some View {
-        HStack(spacing: 3) {
-            Image(systemName: icon)
-            if let title { Text(title) }
-        }
-        .font(.caption.weight(.semibold))
-        .padding(.horizontal, 8).padding(.vertical, 5)
-        .background(.black.opacity(0.55), in: Capsule())
-        .foregroundStyle(.white)
-        .contentShape(Capsule())
-    }
-}
-
-struct ShutterButton: View {
-    let mode: Mode
-    let recording: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                Circle().strokeBorder(.primary.opacity(0.8), lineWidth: 3).frame(width: 52, height: 52)
-                RoundedRectangle(cornerRadius: recording ? 5 : 21)
-                    .fill(mode == .photo ? Color.white : Color.red)
-                    .frame(width: recording ? 22 : 42, height: recording ? 22 : 42)
-                    .shadow(color: .black.opacity(0.2), radius: 1)
-            }
-            .contentShape(Circle())
-            .animation(.spring(duration: 0.25), value: recording)
-        }
-        .buttonStyle(.plain)
-        .help(mode == .photo ? "Take photo (Space)" : recording ? "Stop recording (Space)" : "Start recording (Space)")
-    }
-}
-
-/// The microphone's loudness as a small upright bar: green, then yellow near full scale.
-struct LevelMeter: View {
-    @ObservedObject var level: MicLevel
-    var body: some View {
-        let value = CGFloat(level.value)
-        Capsule()
-            .fill(Color.secondary.opacity(0.25))
-            .frame(width: 4, height: 18)
-            .overlay(alignment: .bottom) {
-                Capsule()
-                    .fill(value > 0.85 ? Color.yellow : Color.green)
-                    .frame(width: 4, height: max(2, 18 * value))
-                    .animation(.linear(duration: 0.08), value: value)
-            }
-            .help("Microphone level")
-    }
-}
-
-struct RecordingBadge: View {
-    let since: Date
-    var body: some View {
-        TimelineView(.periodic(from: since, by: 1)) { context in
-            let s = max(0, Int(context.date.timeIntervalSince(since)))
-            HStack(spacing: 5) {
-                Circle().fill(.red).frame(width: 8, height: 8)
-                Text(String(format: "%02d:%02d", s / 60, s % 60)).font(.caption.monospacedDigit().weight(.semibold))
-            }
-            .padding(.horizontal, 7).padding(.vertical, 3)
-            .background(.black.opacity(0.55), in: Capsule())
-            .foregroundStyle(.white)
-        }
-    }
-}
-
-struct Thumbnail: View {
-    let url: URL
-    @State private var image: NSImage?
-
-    var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            Group {
-                if let image {
-                    Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
-                } else {
-                    Color.secondary.opacity(0.2)
-                }
-            }
-            .frame(width: 64, height: 64)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            if url.pathExtension.lowercased() == "mp4" {
-                Image(systemName: "video.fill")
-                    .font(.system(size: 9))
-                    .foregroundStyle(.white)
-                    .padding(4)
-                    .shadow(radius: 2)
-            }
-        }
-        .help(url.lastPathComponent)
-        .task(id: url) { image = await Library.thumbnail(for: url, size: 128) }
-    }
-}
-
-/// AVKit's own player view. SwiftUI's `VideoPlayer` aborts at launch of a video here: its
-/// overlay needs AVKit loaded, and nothing else in the app links AVKit.
-struct PlayerView: NSViewRepresentable {
-    let player: AVPlayer
-
-    func makeNSView(context: Context) -> AVPlayerView {
-        let view = AVPlayerView()
-        view.controlsStyle = .floating
-        view.player = player
-        return view
-    }
-
-    func updateNSView(_ view: AVPlayerView, context: Context) { view.player = player }
-}
-
-struct PreviewView: NSViewRepresentable {
-    let layer: AVSampleBufferDisplayLayer
-
-    func makeNSView(context: Context) -> LayerHost {
-        let view = LayerHost()
-        view.wantsLayer = true
-        view.layer?.backgroundColor = NSColor.black.cgColor
-        view.layer?.addSublayer(layer)
-        return view
-    }
-
-    func updateNSView(_ nsView: LayerHost, context: Context) {}
-
-    final class LayerHost: NSView {
-        override func layout() {
-            super.layout()
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            layer?.sublayers?.forEach { $0.frame = bounds }
-            CATransaction.commit()
         }
     }
 }

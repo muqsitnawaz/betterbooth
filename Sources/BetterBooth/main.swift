@@ -94,7 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             fail("\(flag) takes \(expected)")
         }
         // A mistyped flag such as --phot must fail, not open the app or capture with defaults.
-        let known: Set = ["--list", "--photo", "--record", "--aspect", "--res", "--fps", "--camera", "--mic", "--rotate"]
+        let known: Set = ["--list", "--photo", "--record", "--aspect", "--res", "--fps", "--camera", "--mic", "--rotate", "--blur", "--brighten"]
         if let unknown = args.dropFirst().first(where: { $0.hasPrefix("--") && !known.contains($0) }) {
             fail("unknown option \(unknown); the options are \(known.sorted().joined(separator: " "))")
         }
@@ -133,6 +133,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
         if let res = option("--res", "720, 1080, 1440 or 2160", { Int($0).flatMap(Resolution.init(rawValue:)) }) { camera.config.resolution = res }
         if let fps = option("--fps", "23.98, 24, 30 or 60", FrameRate.init(rawValue:)) { camera.config.frameRate = fps }
+        if let radius = option("--blur", "a radius in pixels at 1080p, such as --blur 16", { Double($0).flatMap { $0 > 0 && $0 <= 100 ? $0 : nil } }) {
+            camera.config.blurBackground = true
+            camera.config.blurRadius = radius
+        }
+        if let stops = option("--brighten", "stops of exposure from -2 to 2, such as --brighten 1", { Double($0).flatMap { abs($0) <= 2 ? $0 : nil } }) {
+            camera.config.brighten = true
+            camera.config.brightness = stops
+        }
+        // No location prompt in a script, and no microphone for a photo.
+        camera.config.saveLocation = false
+        if photo { camera.config.micOn = false }
 
         func finish(_ url: URL?) {
             // After the main-queue work already pending, so a reason reported just before is printed.

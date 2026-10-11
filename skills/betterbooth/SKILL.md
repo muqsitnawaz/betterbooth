@@ -28,6 +28,9 @@ captures from the command line without opening a window:
   has a native 1080×1920 portrait mode, so vertical photos are not cut from a landscape frame.
 - **Cameras by name, not index.** `--camera iphone`, `--camera "cam link"`: part of the name is
   enough, and `--list` prints every camera and microphone.
+- **Background blur and brightening built in.** `--blur 16` keeps the person sharp and blurs the
+  room behind them, with a person mask from Apple's Vision framework; `--brighten 1` lifts a dim
+  room by a stop.
 - **Video with synced sound.** H.264 + AAC `.mp4`, picture and sound on one clock, at 23.98,
   24, 30 or 60 fps, from any connected microphone.
 - **Strict input.** An unknown option or invalid value is an error that names the valid ones
@@ -62,9 +65,12 @@ Options for `--photo` and `--record`:
 | `--camera <name>` | part of a name from `--list` | the person's chosen camera |
 | `--mic <name>` | part of a name from `--list`; turns sound on | the app's microphone setting (on, system default) |
 | `--rotate <degrees>` | `0` `90` `180` `270`, clockwise | that camera's saved rotation |
+| `--blur <pixels>` | background blur radius at 1080p, `1` to `100`; `8` soft, `16` medium, `32` strong | the app's setting (off) |
+| `--brighten <stops>` | exposure added, `-2` to `2` | the app's setting (off) |
 
 Anything you leave out follows the app's own settings, including whether sound is recorded and
-mirroring (on by default, like a selfie camera).
+mirroring (on by default, like a selfie camera). A `--photo` never opens the microphone, and
+command-line captures never write a location.
 
 ## Cases it handles
 
@@ -90,8 +96,9 @@ BetterBooth 2026-10-11 09.41.52 cam-link-4k 9x16 1080p.jpg
 BetterBooth 2026-10-11 09.40.31 cam-link-4k 9x16 1080p 30fps.mp4
 ```
 
-A recording starts once the microphone has joined, so a `--record 5` file runs up to a second
-short of 5 seconds.
+A `--record 5` file is 5 seconds long. When the run changes the camera's frame rate, some cameras
+(a DJI Osmo Pocket 3 in testing) restart their stream once, and the file can hold fewer frames
+than the rate implies.
 
 ## Recipes
 
@@ -106,6 +113,9 @@ f=$($BB --photo --camera iphone --aspect 9:16) || f=$($BB --photo --camera iphon
 
 # A 10-second vertical clip at 60 fps from a capture card, with the USB interface's sound
 $BB --record 10 --camera "cam link" --aspect 9:16 --res 1080 --fps 60 --mic scarlett
+
+# A vertical photo with the background blurred, in a dim room
+$BB --photo --aspect 9:16 --blur 16 --brighten 1
 
 # Check what you got
 ffprobe -v error -show_entries stream=codec_type,width,height,r_frame_rate -of csv "$f"

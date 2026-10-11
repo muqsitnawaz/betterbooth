@@ -1,6 +1,7 @@
 import AVKit
 import SwiftUI
 
+/// A photo or video shown in place of the live picture, laid out like Photos.
 struct CaptureViewer: View {
     let url: URL
     @ObservedObject var library: Library
@@ -17,40 +18,23 @@ struct CaptureViewer: View {
             if isVideo, let player {
                 PlayerView(player: player)
             } else if let image {
-                Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .onTapGesture(count: 2) { NSWorkspace.shared.open(url) }
+                    .help("Double-click to open in Preview")
             }
             VStack {
-                HStack(spacing: 6) {
-                    pill("Camera", icon: "chevron.left", help: "Back to the camera (Esc)", action: close)
-                        .keyboardShortcut(.cancelAction)
-                    Spacer()
-                    ShareLink(item: url) { pillLabel(nil, icon: "square.and.arrow.up") }
-                        .buttonStyle(.plain)
-                        .help("Share")
-                    pill(nil, icon: "arrow.up.forward.app", help: "Open in \(isVideo ? "QuickTime" : "Preview")") { NSWorkspace.shared.open(url) }
-                    pill(nil, icon: "folder", help: "Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-                    pill(nil, icon: "trash", help: "Move to Trash") {
-                        library.trash(url)
-                        close()
-                    }
-                }
+                topBar
                 Spacer()
-                HStack {
-                    pill(nil, icon: "chevron.left", help: "Newer (←)") { step(-1) }
-                        .keyboardShortcut(.leftArrow, modifiers: [])
-                    Spacer()
-                    Text(url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: #"^(Camera|BetterBooth) "#, with: "", options: .regularExpression))
-                        .font(.caption2)
-                        .padding(.horizontal, 6).padding(.vertical, 3)
-                        .background(.black.opacity(0.5), in: Capsule())
-                        .foregroundStyle(.white.opacity(0.9))
-                    Spacer()
-                    pill(nil, icon: "chevron.right", help: "Older (→)") { step(1) }
-                        .keyboardShortcut(.rightArrow, modifiers: [])
-                }
-                .padding(.bottom, isVideo ? 44 : 0)  // clear of the player's controls
             }
             .padding(8)
+            HStack {
+                arrow("chevron.left", help: "Newer (←)", key: .leftArrow) { step(-1) }
+                Spacer()
+                arrow("chevron.right", help: "Older (→)", key: .rightArrow) { step(1) }
+            }
+            .padding(.horizontal, 8)
         }
         .task(id: url) {
             player?.pause()
@@ -67,22 +51,60 @@ struct CaptureViewer: View {
         .onDisappear { player?.pause() }
     }
 
-    private func pill(_ title: String?, icon: String, help: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) { pillLabel(title, icon: icon) }
+    private var topBar: some View {
+        HStack(alignment: .top) {
+            Button(action: close) {
+                Label("Camera", systemImage: "chevron.left").font(.caption.weight(.semibold)).overlayChip()
+            }
             .buttonStyle(.plain)
-            .help(help)
+            .keyboardShortcut(.cancelAction)
+            .help("Back to the camera (Esc)")
+            Spacer()
+            VStack(spacing: 1) {
+                Text(Self.day.string(from: taken)).font(.caption.weight(.semibold))
+                Text(taken.formatted(date: .omitted, time: .shortened) + (isVideo ? " · Video" : "")).font(.caption2)
+            }
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.6), radius: 3)
+            Spacer()
+            HStack(spacing: 6) {
+                ShareLink(item: url) { circle("square.and.arrow.up") }
+                    .buttonStyle(.plain)
+                    .help("Share")
+                Button {
+                    library.trash(url)
+                    close()
+                } label: { circle("trash") }
+                .buttonStyle(.plain)
+                .help("Move to Trash")
+            }
+        }
     }
 
-    private func pillLabel(_ title: String?, icon: String) -> some View {
-        HStack(spacing: 3) {
-            Image(systemName: icon)
-            if let title { Text(title) }
-        }
-        .font(.caption.weight(.semibold))
-        .padding(.horizontal, 8).padding(.vertical, 5)
-        .background(.black.opacity(0.55), in: Capsule())
-        .foregroundStyle(.white)
-        .contentShape(Capsule())
+    private var taken: Date { (try? url.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .now }
+
+    /// "Today", "Yesterday", or the date.
+    private static let day: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.doesRelativeDateFormatting = true
+        return f
+    }()
+
+    private func circle(_ icon: String) -> some View {
+        Image(systemName: icon)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 28, height: 28)
+            .background(.black.opacity(0.45), in: Circle())
+            .contentShape(Circle())
+    }
+
+    private func arrow(_ icon: String, help: String, key: KeyEquivalent, action: @escaping () -> Void) -> some View {
+        Button(action: action) { circle(icon) }
+            .buttonStyle(.plain)
+            .keyboardShortcut(key, modifiers: [])
+            .help(help)
     }
 }
 

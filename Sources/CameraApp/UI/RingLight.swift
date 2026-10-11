@@ -3,16 +3,25 @@ import CoreImage
 
 /// White light around the screen's edges that lights your face; brighter than white with HDR headroom.
 enum RingLight {
-    enum Strength: Int, CaseIterable, Identifiable {
-        case soft = 60, medium = 110, bright = 170
-        var id: Int { rawValue }
-        var label: String { ["Soft", "Medium", "Bright"][Self.allCases.firstIndex(of: self)!] }
+    enum Level: String, CaseIterable, Identifiable {
+        case off, soft, bright
+        var id: Self { self }
+        /// How far the band reaches in from the screen's edges, in points.
+        var width: CGFloat { [Self.off: 0, .soft: 60, .bright: 170][self]! }
     }
 
     private static var windows: [NSWindow] = []
 
-    static func show(_ strength: Strength, on screens: [NSScreen]) {
+    /// The connected displays among `chosen` (IDs joined by commas), else the main display.
+    static func screens(chosen: String) -> [NSScreen] {
+        let ids = Set(chosen.split(separator: ",").map(String.init))
+        let screens = NSScreen.screens.filter { ids.contains($0.displayID) }
+        return screens.isEmpty ? [NSScreen.main].compactMap { $0 } : screens
+    }
+
+    static func show(_ level: Level, on screens: [NSScreen]) {
         hide()
+        guard level != .off else { return }
         windows = screens.map { screen in
             let w = NSWindow(contentRect: screen.frame, styleMask: .borderless, backing: .buffered, defer: false)
             w.isOpaque = false
@@ -22,7 +31,7 @@ enum RingLight {
             w.level = .floating
             w.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
             w.isReleasedWhenClosed = false
-            w.contentView = Band(width: CGFloat(strength.rawValue), headroom: screen.maximumPotentialExtendedDynamicRangeColorComponentValue)
+            w.contentView = Band(width: level.width, headroom: screen.maximumPotentialExtendedDynamicRangeColorComponentValue)
             w.setFrame(screen.frame, display: false)
             w.orderFrontRegardless()
             return w

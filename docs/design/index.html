@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Camera Redesign</title>
+<meta name="description" content="Prototype of the Apple-style Camera popover, built from the owner's 5:38 AM video feedback, with each request mapped to the change that answers it.">
+<style>
+:root {
+  --bg: #f5f5f7; --panel: #ffffff; --ink: #1d1d1f; --muted: #6e6e73; --line: #d2d2d7;
+  --accent: #0a84ff; --accent-soft: rgba(10,132,255,.12); --ok: #30d158; --warn: #ff9f0a;
+  --quote: #f0f0f3; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 30px rgba(0,0,0,.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111113; --panel: #1c1c1e; --ink: #f5f5f7; --muted: #98989d; --line: #38383a;
+    --accent-soft: rgba(10,132,255,.22); --quote: #26262a; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111113; --panel: #1c1c1e; --ink: #f5f5f7; --muted: #98989d; --line: #38383a;
+  --accent-soft: rgba(10,132,255,.22); --quote: #26262a; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 30px rgba(0,0,0,.35);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 28px 16px 64px; }
+header.top { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+h1 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 6px; }
+.lede { color: var(--muted); max-width: 720px; margin: 0; }
+.chip { display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+.themebtn { border: 1px solid var(--line); background: var(--panel); border-radius: 99px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+.grid { display: grid; grid-template-columns: minmax(0, 470px) minmax(0, 1fr); gap: 28px; margin-top: 24px; align-items: start; }
+@media (max-width: 960px) { .grid { grid-template-columns: 1fr; } }
+
+/* ---------- Mock desktop + popover ---------- */
+.stage { position: sticky; top: 16px; }
+@media (max-width: 960px) { .stage { position: static; } }
+.desktop { position: relative; border-radius: 16px; overflow: hidden; box-shadow: var(--shadow);
+  background: radial-gradient(120% 80% at 20% 10%, #6b3fa0 0%, rgba(107,63,160,0) 60%),
+              radial-gradient(90% 70% at 90% 90%, #ff7a59 0%, rgba(255,122,89,0) 60%),
+              linear-gradient(160deg, #241a4a, #6d2f62 55%, #e2685a); padding: 0 0 22px; }
+.desktop.ring::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 16px;
+  box-shadow: inset 0 0 0 var(--ringw, 18px) rgba(255,250,240,.96), inset 0 0 calc(var(--ringw, 18px) * 2.2) calc(var(--ringw, 18px) * .6) rgba(255,250,240,.75); }
+.menubar { height: 28px; background: rgba(20,16,30,.55); backdrop-filter: blur(20px); display: flex; align-items: center;
+  justify-content: flex-end; gap: 14px; padding: 0 14px; color: #fff; font-size: 13px; font-weight: 500; }
+.menubar .mbicon { width: 26px; height: 20px; border-radius: 5px; display: grid; place-items: center; background: rgba(255,255,255,.22); }
+.pop-wrap { display: flex; justify-content: center; padding-top: 8px; }
+.popover { position: relative; width: 340px; background: rgba(30,30,32,.92); backdrop-filter: blur(30px) saturate(1.6);
+  border-radius: 14px; border: .5px solid rgba(255,255,255,.14); box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  color: #f5f5f7; padding: 12px; }
+.popover::before { content: ""; position: absolute; top: -7px; left: 50%; margin-left: -8px; width: 16px; height: 16px;
+  transform: rotate(45deg); background: rgba(30,30,32,.92); border-left: .5px solid rgba(255,255,255,.14); border-top: .5px solid rgba(255,255,255,.14); }
+
+/* preview */
+.preview { position: relative; width: 100%; aspect-ratio: 9 / 16; border-radius: 12px; overflow: hidden; background: #000; transition: aspect-ratio .3s; }
+.preview[data-aspect="4:5"] { aspect-ratio: 4 / 5; } .preview[data-aspect="3:4"] { aspect-ratio: 3 / 4; } .preview[data-aspect="1:1"] { aspect-ratio: 1; }
+.preview.land[data-aspect="9:16"] { aspect-ratio: 16 / 9; } .preview.land[data-aspect="4:5"] { aspect-ratio: 5 / 4; } .preview.land[data-aspect="3:4"] { aspect-ratio: 4 / 3; }
+.scene, .scene .bgl, .scene .person { position: absolute; inset: 0; }
+.scene { transition: filter .25s; }
+.scene .bgl { background:
+   radial-gradient(18% 10% at 30% 30%, rgba(255,255,255,.9), rgba(255,255,255,0) 70%),
+   linear-gradient(180deg, #ffb26b 0%, #ff7a6b 38%, #b0507a 62%, #3b2a5a 100%); transition: filter .25s; }
+.scene .bgl::before { content: ""; position: absolute; left: 6%; right: 58%; top: 40%; bottom: 30%; background: #2f6a4f; border-radius: 40% 40% 8% 8%; opacity: .85; }
+.scene .bgl::after { content: ""; position: absolute; right: 8%; top: 22%; width: 22%; height: 30%; border: 5px solid rgba(255,255,255,.55); border-radius: 4px; }
+.scene .person svg { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); height: 72%; }
+.scene.blur-soft .bgl { filter: blur(5px); } .scene.blur-strong .bgl { filter: blur(11px); }
+.scene.bright-1 { filter: brightness(1.18) contrast(.97); } .scene.bright-2 { filter: brightness(1.36) contrast(.94); }
+.ov { position: absolute; left: 8px; right: 8px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.ov.top { top: 8px; } .ov.bottom { bottom: 8px; }
+.glass { background: rgba(0,0,0,.42); backdrop-filter: blur(12px); border: 0; color: #fff; border-radius: 99px;
+  font-size: 12px; font-weight: 600; padding: 5px 10px; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.glass:hover { background: rgba(0,0,0,.58); }
+.glass.icon { width: 30px; height: 30px; padding: 0; justify-content: center; }
+.glass.on { background: rgba(255,214,10,.92); color: #000; }
+.rec { display: none; } .rec.show { display: inline-flex; }
+.rec .dot { width: 8px; height: 8px; border-radius: 99px; background: #ff453a; }
+
+/* effects tray over the preview */
+.tray { position: absolute; left: 8px; right: 8px; bottom: 46px; background: rgba(20,20,22,.72); backdrop-filter: blur(18px);
+  border-radius: 14px; padding: 10px; display: none; flex-direction: column; gap: 8px; }
+.tray.show { display: flex; }
+.tray .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+.tray .row .name { display: flex; align-items: center; gap: 7px; font-weight: 600; }
+.seg { display: inline-flex; background: rgba(255,255,255,.1); border-radius: 8px; padding: 2px; }
+.seg button { border: 0; background: transparent; color: #f5f5f7; font-size: 11.5px; font-weight: 600; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+.seg button.sel { background: rgba(255,255,255,.9); color: #000; }
+
+/* below preview */
+.aspect-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+.aspects { display: inline-flex; gap: 2px; }
+.aspects button { border: 0; background: transparent; color: rgba(255,255,255,.65); font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 99px; cursor: pointer; }
+.aspects button.sel { color: #000; background: rgba(255,255,255,.92); }
+.iconbtn { border: 0; background: transparent; color: rgba(255,255,255,.85); width: 32px; height: 32px; border-radius: 99px; display: grid; place-items: center; cursor: pointer; position: relative; }
+.iconbtn:hover { background: rgba(255,255,255,.1); }
+.iconbtn.on { color: #ffd60a; }
+.iconbtn .badge { position: absolute; right: 1px; bottom: 2px; font-size: 9px; font-weight: 800; color: #ffd60a; }
+.modes { display: flex; justify-content: center; gap: 18px; margin-top: 10px; font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+.modes button { border: 0; background: transparent; color: rgba(255,255,255,.55); cursor: pointer; padding: 2px 0; }
+.modes button.sel { color: #ffd60a; }
+.shutter-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-top: 8px; }
+.shutter-row .left { display: flex; gap: 2px; align-items: center; }
+.shutter-row .right { display: flex; justify-content: flex-end; }
+.shutter { width: 62px; height: 62px; border-radius: 99px; border: 3px solid rgba(255,255,255,.9); background: transparent; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.shutter i { display: block; width: 50px; height: 50px; border-radius: 99px; background: #fff; transition: all .2s; }
+.shutter.video i { background: #ff453a; }
+.shutter.recording i { width: 24px; height: 24px; border-radius: 6px; }
+.shutter.back i { background: rgba(255,255,255,.18); }
+.shutter-hint { text-align: center; font-size: 11px; color: rgba(255,255,255,.6); height: 14px; margin-top: 4px; }
+.meter { width: 4px; height: 18px; border-radius: 4px; background: rgba(255,255,255,.18); position: relative; overflow: hidden; margin-left: -2px; }
+.meter i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--ok); border-radius: 4px; height: 30%; transition: height .08s linear; }
+.strip { display: flex; gap: 6px; overflow-x: auto; margin-top: 10px; padding-bottom: 2px; scrollbar-width: none; }
+.strip button { flex: 0 0 auto; width: 46px; height: 46px; border-radius: 9px; border: 2px solid transparent; padding: 0; cursor: pointer; position: relative; overflow: hidden; }
+.strip button.sel { border-color: #ffd60a; }
+.strip button .v { position: absolute; left: 4px; bottom: 3px; width: 10px; height: 7px; background: #fff; border-radius: 2px; }
+
+/* sheets over the popover */
+.sheet { position: absolute; left: 12px; right: 12px; top: 12px; background: rgba(44,44,46,.96); backdrop-filter: blur(24px); border-radius: 12px;
+  border: .5px solid rgba(255,255,255,.12); box-shadow: 0 16px 40px rgba(0,0,0,.45); padding: 12px; display: none; z-index: 5; font-size: 13px; }
+.sheet.show { display: block; }
+.sheet h4 { margin: 0 0 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+.sheet h4 button { border: 0; background: rgba(255,255,255,.12); border-radius: 99px; color: #fff; width: 22px; height: 22px; cursor: pointer; }
+.sheet .line { display: flex; justify-content: space-between; align-items: center; padding: 8px 2px; border-top: .5px solid rgba(255,255,255,.1); gap: 8px; }
+.sheet .line:first-of-type { border-top: 0; }
+.sheet .line small { display: block; color: rgba(255,255,255,.55); font-size: 11px; }
+.switch { width: 34px; height: 20px; border-radius: 99px; background: rgba(255,255,255,.22); position: relative; border: 0; cursor: pointer; flex: 0 0 auto; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 99px; background: #fff; transition: left .15s; }
+.switch.on { background: var(--ok); } .switch.on::after { left: 16px; }
+.sheet .quit { margin-top: 8px; width: 100%; border: 0; background: rgba(255,255,255,.08); color: #f5f5f7; border-radius: 8px; padding: 7px; cursor: pointer; display: flex; justify-content: space-between; }
+.camlist button { width: 100%; border: 0; background: transparent; color: #f5f5f7; display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-radius: 8px; cursor: pointer; text-align: left; }
+.camlist button:hover { background: rgba(255,255,255,.08); }
+.camlist button .ck { margin-left: auto; color: #ffd60a; visibility: hidden; } .camlist button.sel .ck { visibility: visible; }
+.camlist button.off { opacity: .45; }
+
+/* viewer */
+.viewer { position: absolute; inset: 0; display: none; background: #000; }
+.viewer.show { display: block; }
+.viewer .img { position: absolute; inset: 0; }
+.viewer .edge { position: absolute; top: 50%; transform: translateY(-50%); }
+.viewer .edge.l { left: 8px; } .viewer .edge.r { right: 8px; }
+.viewer .date { font-size: 11px; color: rgba(255,255,255,.85); font-weight: 600; text-align: center; line-height: 1.2; }
+.viewer .date small { display: block; font-weight: 500; color: rgba(255,255,255,.6); }
+.player { position: absolute; left: 10px; right: 10px; bottom: 10px; background: rgba(0,0,0,.45); backdrop-filter: blur(10px); border-radius: 10px; padding: 6px 10px; display: none; align-items: center; gap: 8px; font-size: 11px; }
+.player.show { display: flex; }
+.player .bar { flex: 1; height: 4px; background: rgba(255,255,255,.25); border-radius: 4px; position: relative; }
+.player .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 35%; background: #fff; border-radius: 4px; }
+.toast { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); background: rgba(0,0,0,.7); color: #fff; font-size: 12px; font-weight: 600;
+  padding: 8px 12px; border-radius: 10px; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; z-index: 8; }
+.toast.show { opacity: 1; }
+.flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .35s; }
+.flash.on { opacity: 1; transition: none; }
+
+/* highlight for "show me" */
+.hl { outline: 3px solid #ffd60a !important; outline-offset: 2px; border-radius: 10px; animation: pulse 1.2s ease-out 2; }
+@keyframes pulse { 0% { outline-color: rgba(255,214,10,1); } 100% { outline-color: rgba(255,214,10,.15); } }
+@media (prefers-reduced-motion: reduce) { .hl { animation: none; } .preview, .scene, .shutter i { transition: none; } }
+
+.caption { font-size: 12.5px; color: var(--muted); margin: 10px 4px 0; }
+.legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; color: var(--muted); }
+
+/* ---------- Feedback list ---------- */
+.panel { background: var(--panel); border-radius: 16px; box-shadow: var(--shadow); padding: 18px; }
+.panel h2 { margin: 0 0 4px; font-size: 19px; letter-spacing: -.01em; }
+.panel p.sub { margin: 0 0 14px; color: var(--muted); font-size: 13.5px; }
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+@media (max-width: 560px) { .compare { grid-template-columns: 1fr; } }
+.compare .box { border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+.compare .box b { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.mini { background: #1e1e20; border-radius: 10px; padding: 8px; margin-top: 8px; color: #f5f5f7; font-size: 11px; display: flex; flex-direction: column; gap: 6px; }
+.mini .r { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.mini .p { background: rgba(255,255,255,.12); border-radius: 6px; padding: 2px 6px; }
+.mini .i { width: 16px; height: 16px; border-radius: 4px; background: rgba(255,255,255,.25); display: inline-block; }
+.mini .i.blue { background: #0a84ff; }
+ol.fb { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; counter-reset: fb; }
+ol.fb li { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: start; }
+ol.fb li::before { counter-increment: fb; content: counter(fb); width: 24px; height: 24px; border-radius: 99px; background: var(--accent-soft); color: var(--accent);
+  font-weight: 700; font-size: 12px; display: grid; place-items: center; grid-row: span 2; }
+ol.fb .q { font-size: 13px; color: var(--muted); background: var(--quote); border-radius: 8px; padding: 6px 9px; }
+ol.fb .q time { font-weight: 700; color: var(--ink); margin-right: 6px; font-variant-numeric: tabular-nums; }
+ol.fb .a { grid-column: 2; font-size: 14px; }
+ol.fb .a b { font-weight: 650; }
+ol.fb .show { grid-row: span 2; align-self: center; border: 1px solid var(--accent); color: var(--accent); background: transparent; border-radius: 99px; padding: 5px 11px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+ol.fb .show:hover { background: var(--accent-soft); }
+.note { margin-top: 16px; border-left: 3px solid var(--warn); background: var(--quote); border-radius: 8px; padding: 10px 12px; font-size: 13.5px; }
+.note h3 { margin: 0 0 4px; font-size: 14px; }
+.note ul { margin: 6px 0 0; padding-left: 18px; }
+footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; }
+@media (max-width: 560px) { ol.fb li { grid-template-columns: auto 1fr; } ol.fb .show { grid-column: 2; grid-row: auto; justify-self: start; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <span class="chip">Design prototype · shipped in Camera 0.4</span>
+      <h1>Camera, redesigned the Apple way</h1>
+      <p class="lede">Built from a 3 min 43 s feedback video on Camera 0.3. Every request is listed on the right with the quote and its timestamp; <b>Show</b> puts the prototype into the state that answers it and outlines the control. Everything in the popover is clickable.</p>
+    </div>
+    <button class="themebtn" id="theme" aria-label="Switch light or dark page theme">Theme: Auto</button>
+  </header>
+
+  <div class="grid">
+    <!-- ================= PROTOTYPE ================= -->
+    <div class="stage">
+      <div class="desktop" id="desktop">
+        <div class="menubar"><span>Wi-Fi</span><span class="mbicon" title="Camera in the menu bar">
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="#fff"><rect x="0" y="2" width="16" height="10" rx="2.5"/><rect x="5" y="0" width="6" height="3" rx="1"/><circle cx="8" cy="7" r="3" fill="#2a2440"/></svg></span><span>Sun Oct 11 9:41 AM</span></div>
+        <div class="pop-wrap">
+          <div class="popover" id="pop">
+            <div class="preview" id="preview" data-aspect="9:16">
+              <div class="scene" id="scene">
+                <div class="bgl"></div>
+                <div class="person"><svg viewBox="0 0 200 260" aria-hidden="true"><ellipse cx="100" cy="78" rx="44" ry="52" fill="#e9b08f"/><path d="M56 70 Q60 22 100 22 Q142 22 146 72 Q132 46 100 46 Q70 46 56 70Z" fill="#3a2a22"/><path d="M10 260 Q14 160 100 150 Q186 160 190 260Z" fill="#e8edf2"/><path d="M80 150 L100 190 L120 150Z" fill="#c9d3dd"/></svg></div>
+              </div>
+              <div class="ov top">
+                <button class="glass" id="camChip" aria-label="Choose camera">
+                  <svg width="15" height="12" viewBox="0 0 16 12" fill="currentColor"><rect x="0" y="2" width="16" height="10" rx="2.5"/><rect x="5" y="0" width="6" height="3" rx="1"/><circle cx="8" cy="7" r="3" fill="#000" opacity=".55"/></svg>
+                  <span id="camName">OsmoPocket3</span>
+                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1.5 3 L4 5.5 L6.5 3"/></svg>
+                </button>
+                <span class="glass rec" id="recBadge"><span class="dot"></span><span id="recTime">00:00</span></span>
+                <button class="glass" id="badge" aria-label="Camera settings: resolution and frame rate">HD · 30</button>
+              </div>
+              <div class="ov bottom">
+                <span></span>
+                <button class="glass icon" id="fxBtn" aria-label="Effects: blur, brighten, ring light">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v2.2M8 12.8V15M1 8h2.2M12.8 8H15M3 3l1.6 1.6M11.4 11.4L13 13M3 13l1.6-1.6M11.4 4.6L13 3"/></svg>
+                </button>
+              </div>
+              <div class="tray" id="tray" role="group" aria-label="Effects">
+                <div class="row"><span class="name">
+                  <svg width="18" height="16" viewBox="0 0 18 16" fill="none"><circle cx="9" cy="5" r="3" fill="currentColor"/><path d="M3.5 15 Q4 9.5 9 9.5 Q14 9.5 14.5 15" fill="currentColor"/><circle cx="2" cy="3" r="1.5" fill="currentColor" opacity=".35"/><circle cx="16" cy="4" r="1.8" fill="currentColor" opacity=".35"/><circle cx="15.5" cy="11" r="1.3" fill="currentColor" opacity=".35"/></svg>
+                  Portrait blur</span>
+                  <span class="seg" data-fx="blur"><button data-v="off" class="sel">Off</button><button data-v="soft">Soft</button><button data-v="strong">Strong</button></span></div>
+                <div class="row"><span class="name">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3.2" fill="currentColor"/><path d="M8 .8v2M8 13.2v2M.8 8h2M13.2 8h2M2.9 2.9l1.4 1.4M11.7 11.7l1.4 1.4M2.9 13.1l1.4-1.4M11.7 4.3l1.4-1.4"/></svg>
+                  Brighten</span>
+                  <span class="seg" data-fx="bright"><button data-v="0" class="sel">Off</button><button data-v="1">More</button><button data-v="2">Most</button></span></div>
+                <div class="row"><span class="name">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="1.5" y="1.5" width="13" height="13" rx="4"/></svg>
+                  Ring light</span>
+                  <span class="seg" data-fx="ring"><button data-v="off" class="sel">Off</button><button data-v="soft">Soft</button><button data-v="bright">Bright</button></span></div>
+              </div>
+              <div class="viewer" id="viewer">
+                <div class="img" id="viewImg"></div>
+                <div class="ov top">
+                  <button class="glass" id="backBtn"><svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6.5 1 L1.5 6 L6.5 11"/></svg>Camera</button>
+                  <span class="date" id="viewDate">Today<small>5:37 AM</small></span>
+                  <span style="display:flex;gap:6px">
+                    <button class="glass icon" id="shareBtn" aria-label="Share"><svg width="14" height="16" viewBox="0 0 14 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 1v9M3.5 4.5L7 1l3.5 3.5M2 7.5v6.5h10V7.5"/></svg></button>
+                    <button class="glass icon" id="trashBtn" aria-label="Delete"><svg width="14" height="16" viewBox="0 0 14 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 4h12M5 4V2h4v2M2.5 4l.8 10.5h7.4L11.5 4"/></svg></button>
+                  </span>
+                </div>
+                <button class="glass icon edge l" id="prevBtn" aria-label="Newer"><svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6.5 1 L1.5 6 L6.5 11"/></svg></button>
+                <button class="glass icon edge r" id="nextBtn" aria-label="Older"><svg width="8" height="12" viewBox="0 0 8 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.5 1 L6.5 6 L1.5 11"/></svg></button>
+                <div class="player" id="player"><span>▶︎</span><span>0:01</span><span class="bar"><i></i></span><span>0:03</span></div>
+              </div>
+              <div class="flash" id="flash"></div>
+              <div class="toast" id="toast"></div>
+            </div>
+
+            <div class="aspect-row" id="aspectRow">
+              <span class="aspects" id="aspects"><button data-a="9:16" class="sel">9:16</button><button data-a="4:5">4:5</button><button data-a="3:4">3:4</button><button data-a="1:1">1:1</button></span>
+              <button class="iconbtn" id="rotate" aria-label="Turn the frame; right-click if the camera is mounted sideways">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2.5" width="8" height="13" rx="2"/><path d="M15.5 6.5 A7 7 0 0 0 11 2"/><path d="M11 0.8 L11 2.6 L12.8 2.6"/></svg>
+              </button>
+            </div>
+
+            <div class="modes" id="modes"><button data-m="photo" class="sel">PHOTO</button><button data-m="video">VIDEO</button></div>
+            <div class="shutter-row">
+              <div class="left" id="leftCtl">
+                <button class="iconbtn" id="timerBtn" aria-label="Timer: click for on or off, right-click for 3 or 10 seconds">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="10" r="6.5"/><path d="M9 10V6.5M7 1.5h4"/></svg><span class="badge" id="timerBadge"></span>
+                </button>
+                <button class="iconbtn on" id="micBtn" aria-label="Microphone: click to mute, right-click to pick" hidden>
+                  <svg width="16" height="18" viewBox="0 0 16 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="1" width="6" height="10" rx="3"/><path d="M2 8.5a6 6 0 0 0 12 0M8 14.5V17"/></svg>
+                </button>
+                <span class="meter" id="meter" hidden><i id="meterFill"></i></span>
+              </div>
+              <button class="shutter" id="shutter" aria-label="Take photo"><i></i></button>
+              <div class="right">
+                <button class="iconbtn" id="folderBtn" aria-label="Open the Camera folder in Finder">
+                  <svg width="18" height="16" viewBox="0 0 18 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 3.5a1.5 1.5 0 0 1 1.5-1.5h3.5l1.8 2H15a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 15 14.5H3a1.5 1.5 0 0 1-1.5-1.5z"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="shutter-hint" id="hint"></div>
+            <div class="strip" id="strip"></div>
+
+            <!-- camera list sheet -->
+            <div class="sheet camlist" id="camSheet" role="dialog" aria-label="Choose camera">
+              <h4>Camera <button data-close aria-label="Close">×</button></h4>
+              <button data-cam="OsmoPocket3" class="sel"><span>🎥</span>OsmoPocket3<span class="ck">✓</span></button>
+              <button data-cam="Muqsit’s iPhone"><span>📱</span>iPhone (Continuity Camera)<span class="ck">✓</span></button>
+              <button data-cam="Cam Link 4K"><span>🔌</span>Cam Link 4K<span class="ck">✓</span></button>
+              <button data-cam="MacBook Pro" class="off" title="Off while the lid is closed"><span>💻</span>MacBook Pro Camera · lid closed<span class="ck">✓</span></button>
+            </div>
+            <!-- camera settings sheet -->
+            <div class="sheet" id="setSheet" role="dialog" aria-label="Camera settings">
+              <h4>Camera Settings <button data-close aria-label="Close">×</button></h4>
+              <div class="line"><span>Resolution</span><span class="seg" data-set="res"><button data-v="HD" class="sel">1080p</button><button data-v="2K">1440p</button><button data-v="4K">4K</button></span></div>
+              <div class="line" id="fpsLine"><span>Frame rate</span><span class="seg" data-set="fps"><button data-v="24">24</button><button data-v="30" class="sel">30</button><button data-v="60">60</button></span></div>
+              <div class="line"><span>Mirror<small>Flip like a selfie camera</small></span><button class="switch on" data-sw="mirror" aria-label="Mirror"></button></div>
+              <div class="line" id="locLine"><span>Location<small>Adds where photos and videos were taken. macOS asks once.</small></span><button class="switch" data-sw="loc" aria-label="Location"></button></div>
+              <button class="quit" id="quitBtn"><span>Quit Camera</span><span style="opacity:.6">⌘Q</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="caption">Proposed mockup, interactive. The picture is a drawn stand-in, not a camera capture. Try: PHOTO/VIDEO, the <b>HD · 30</b> badge, the camera name, the effects button at the preview's bottom right, a thumbnail, then the shutter while viewing.</p>
+    </div>
+
+    <!-- ================= FEEDBACK MAP ================= -->
+    <div class="panel">
+      <h2>What was asked for, and what changed</h2>
+      <p class="sub">Quotes from the feedback video, lightly trimmed; times are where each was said.</p>
+
+      <div class="compare" aria-label="Controls before and after">
+        <div class="box"><b>Today (0.3)</b>
+          <div class="mini">
+            <div class="r"><span class="i"></span><span class="p">9:16 4:5 3:4 1:1</span><span class="i"></span></div>
+            <div class="r"><span class="p">1080p ⌃</span><span class="p">30 fps ⌃</span><span class="i blue"></span><span class="i blue"></span><span class="i"></span><span class="i"></span><span class="i blue"></span><span class="i"></span><span class="i"></span></div>
+            <div class="r"><span class="p">Photo | Video</span>⚪︎<span class="i"></span></div>
+          </div>
+          <p class="caption" style="margin:6px 0 0">11 controls in two rows; ⋯ menu holds 4 more items.</p>
+        </div>
+        <div class="box"><b>Proposed</b>
+          <div class="mini">
+            <div class="r"><span class="p">🎥 Osmo ▾</span><span style="flex:1"></span><span class="p">HD · 30</span></div>
+            <div class="r"><span class="p">9:16 4:5 3:4 1:1</span><span class="i"></span></div>
+            <div class="r"><span class="p">PHOTO · VIDEO</span></div>
+            <div class="r"><span class="i"></span>⚪︎<span class="i"></span></div>
+          </div>
+          <p class="caption" style="margin:6px 0 0">Settings live in the badge, effects in one tray, the mic only in Video.</p>
+        </div>
+      </div>
+
+      <ol class="fb" id="fb">
+        <li><div class="q"><time>0:08</time>“Apple wouldn’t have these two things here… a separate thing, because it belongs to camera settings.”</div>
+          <div class="a"><b>Resolution and frame rate left the controls.</b> They live in <b>Camera Settings</b>, opened from the badge on the preview.</div>
+          <button class="show" data-show="settings">Show</button></li>
+        <li><div class="q"><time>0:59</time>“It’s redundant… it shows here but also in this overlay. Maybe you can edit it from the overlay.”</div>
+          <div class="a"><b>The overlay is the control.</b> The <b>HD · 30</b> badge shows the format and opens its settings, so the format appears once.</div>
+          <button class="show" data-show="badge">Show</button></li>
+        <li><div class="q"><time>0:21</time>“Apple wouldn’t have so many of these in here either. It would be a bit cleaner.”</div>
+          <div class="a"><b>From 11 controls to 4 under the preview:</b> timer, shutter, folder, and the mic in Video. Mirror moved to settings; blur, brighten and ring light moved into one effects tray.</div>
+          <button class="show" data-show="clean">Show</button></li>
+        <li><div class="q"><time>0:27</time>“For photo, the microphone icon doesn’t make sense when you’re in photo mode.”</div>
+          <div class="a"><b>The mic and its level meter appear only in Video.</b> Switch to PHOTO and they’re gone.</div>
+          <button class="show" data-show="mic">Show</button></li>
+        <li><div class="q"><time>0:52 / 1:03</time>“This is more like editing… the blur effect is good, but maybe it’s in an effects overlay.”</div>
+          <div class="a"><b>One effects button on the preview</b> opens a tray over the picture with Portrait blur, Brighten and Ring light, each with labeled levels. You see the result while you change it.</div>
+          <button class="show" data-show="effects">Show</button></li>
+        <li><div class="q"><time>0:41</time>“The ring lighting… I’m not sure where that would be.”</div>
+          <div class="a"><b>Ring light is in the effects tray</b> (Off / Soft / Bright). Try Bright: the desktop’s edges light up, as on a real screen. The display choice stays on its right-click.</div>
+          <button class="show" data-show="ring">Show</button></li>
+        <li><div class="q"><time>2:55 / 3:05</time>“The icon for the camera is kind of weird… all the icons are much bigger. The icon for this looks weird too.”</div>
+          <div class="a"><b>No more mystery glyphs.</b> The camera picker is a named chip, <b>🎥 OsmoPocket3 ▾</b>, on the preview. Blur gets a clear person-with-bokeh icon <i>and</i> a text label in the tray.</div>
+          <button class="show" data-show="camera">Show</button></li>
+        <li><div class="q"><time>1:28</time>“If you’re looking at a picture, this label, the whole thing, is very bad. Apple would show the images nicely.”</div>
+          <div class="a"><b>The file-name pill is gone.</b> The photo fills the frame, and the top bar shows only “Today · 5:37 AM” like Photos. Arrows sit at the edges, out of the picture’s way.</div>
+          <button class="show" data-show="viewer">Show</button></li>
+        <li><div class="q"><time>1:50</time>“These are in the right place, but when you go to a video it immediately moves up, which is wrong.”</div>
+          <div class="a"><b>Controls stay put for videos.</b> The same top bar and edge arrows; the player sits in its own strip at the bottom.</div>
+          <button class="show" data-show="video">Show</button></li>
+        <li><div class="q"><time>2:04</time>“I click the camera button and it takes a picture. It should just switch to the camera.”</div>
+          <div class="a"><b>While viewing, the shutter means “back to camera”.</b> It dims and says so; the next press takes the picture.</div>
+          <button class="show" data-show="back">Show</button></li>
+        <li><div class="q"><time>2:20</time>“Show in Finder, open Preview… extra. Share or delete, only those two. Double-click shows the preview.”</div>
+          <div class="a"><b>The viewer has Share and Delete only.</b> Double-click the picture to open it in Preview or QuickTime.</div>
+          <button class="show" data-show="actions">Show</button></li>
+        <li><div class="q"><time>3:10</time>“Apple doesn’t really ask location like this, ‘Save Location’.”</div>
+          <div class="a"><b>Location is a plain switch in Camera Settings,</b> worded like Apple’s. macOS asks for permission once, the first time it’s on.</div>
+          <button class="show" data-show="location">Show</button></li>
+        <li><div class="q"><time>3:17 / 3:20</time>“Don’t worry about video effects… open folder, why does that need to be in here? There’s already an icon for that.”</div>
+          <div class="a"><b>Removed:</b> macOS Video Effects and Open Folder are gone from the menus. The folder button next to the shutter does that.</div>
+          <button class="show" data-show="folder">Show</button></li>
+        <li><div class="q"><time>3:31</time>“Quit can be like a top bar, or quit can just stay here. The only option can be quit, or any other thing that we move here.”</div>
+          <div class="a"><b>The ⋯ menu is gone.</b> Quit is the last row of Camera Settings (⌘Q works too), next to the settings that moved there. Right-clicking the menu-bar icon still offers Quit.</div>
+          <button class="show" data-show="quit">Show</button></li>
+      </ol>
+
+      <div class="note">
+        <h3>Kept as is, from earlier rounds</h3>
+        <ul>
+          <li>Aspect picker with the rotate button that turns 9:16 into 16:9; right-click it for a camera mounted sideways.</li>
+          <li>Click to turn something on, right-click for its choices (timer 3 or 10 s, mic list, ring light displays).</li>
+          <li>The thumbnail strip, which you were using in the video.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <footer>Camera · the interactive prototype behind the 0.4 redesign · <a href="https://github.com/muqsitnawaz/camera">github.com/muqsitnawaz/camera</a></footer>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const S = { mode: 'photo', aspect: '9:16', land: false, timer: 0, timerSec: 3, mic: true, viewing: null, recording: false,
+              blur: 'off', bright: '0', ring: 'off', res: 'HD', fps: '30', mirror: true, loc: false };
+  const shots = [
+    { kind: 'photo', g: 'linear-gradient(180deg,#ffb26b,#ff7a6b 40%,#b0507a 65%,#3b2a5a)', date: 'Today', time: '5:37 AM' },
+    { kind: 'video', g: 'linear-gradient(180deg,#9ad0ff,#5aa0e0 45%,#2f5f8f 70%,#1d2f4f)', date: 'Today', time: '5:31 AM' },
+    { kind: 'photo', g: 'linear-gradient(180deg,#d8f3c8,#8cc79a 45%,#3f7a5f 70%,#20382f)', date: 'Today', time: '5:16 AM' },
+    { kind: 'photo', g: 'linear-gradient(180deg,#e6d4ff,#a58ae0 45%,#5b47a0 70%,#2b2250)', date: 'Yesterday', time: '11:02 PM' },
+    { kind: 'video', g: 'linear-gradient(180deg,#ffe0a8,#f0a85a 45%,#a8603a 70%,#4a2a1e)', date: 'Yesterday', time: '8:40 PM' },
+    { kind: 'photo', g: 'linear-gradient(180deg,#c8f0ff,#7ac8e0 45%,#3a8aa0 70%,#1a3a48)', date: 'Oct 9', time: '6:12 PM' },
+  ];
+  const strip = $('#strip');
+  function renderStrip() {
+    strip.innerHTML = '';
+    shots.forEach((s, i) => {
+      const b = document.createElement('button');
+      b.style.background = s.g; b.setAttribute('aria-label', `${s.kind} from ${s.date} ${s.time}`);
+      if (S.viewing === i) b.classList.add('sel');
+      if (s.kind === 'video') b.innerHTML = '<span class="v"></span>';
+      b.onclick = () => { S.viewing = i; render(); };
+      strip.append(b);
+    });
+  }
+  function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => el.classList.remove('show'), 1400); }
+  function closeSheets() { $$('.sheet').forEach(s => s.classList.remove('show')); }
+  function render() {
+    const video = S.mode === 'video';
+    $$('#modes button').forEach(b => b.classList.toggle('sel', b.dataset.m === S.mode));
+    $('#micBtn').hidden = !video; $('#meter').hidden = !video || !S.mic;
+    $('#micBtn').classList.toggle('on', S.mic);
+    $('#badge').textContent = video ? `${S.res} · ${S.fps}` : S.res;
+    $('#fpsLine').style.display = video ? '' : 'none';
+    const sh = $('#shutter');
+    sh.classList.toggle('video', video); sh.classList.toggle('recording', S.recording); sh.classList.toggle('back', S.viewing !== null);
+    sh.setAttribute('aria-label', S.viewing !== null ? 'Back to camera' : video ? (S.recording ? 'Stop recording' : 'Start recording') : 'Take photo');
+    $('#hint').textContent = S.viewing !== null ? 'Shutter returns to the camera' : (S.timer ? `${S.timerSec}-second timer` : '');
+    $('#recBadge').classList.toggle('show', S.recording); $('#badge').style.display = S.recording ? 'none' : '';
+    $('#timerBtn').classList.toggle('on', !!S.timer); $('#timerBadge').textContent = S.timer ? S.timerSec : '';
+    const p = $('#preview'); p.dataset.aspect = S.aspect; p.classList.toggle('land', S.land && S.aspect !== '1:1');
+    $$('#aspects button').forEach(b => b.classList.toggle('sel', b.dataset.a === S.aspect));
+    $$('#aspects button').forEach(b => { const [a, c] = b.dataset.a.split(':'); b.textContent = S.land && a !== c ? `${c}:${a}` : b.dataset.a; });
+    const sc = $('#scene'); sc.className = 'scene' + (S.blur !== 'off' ? ' blur-' + S.blur : '') + (S.bright !== '0' ? ' bright-' + S.bright : '');
+    sc.style.transform = S.mirror ? 'scaleX(-1)' : '';
+    const d = $('#desktop'); d.classList.toggle('ring', S.ring !== 'off'); d.style.setProperty('--ringw', S.ring === 'bright' ? '26px' : '14px');
+    $('#fxBtn').classList.toggle('on', S.blur !== 'off' || S.bright !== '0' || S.ring !== 'off');
+    $$('.tray .seg').forEach(seg => $$('button', seg).forEach(b => b.classList.toggle('sel', b.dataset.v === S[seg.dataset.fx])));
+    $$('#setSheet .seg').forEach(seg => $$('button', seg).forEach(b => b.classList.toggle('sel', b.dataset.v === S[seg.dataset.set])));
+    $$('.switch').forEach(sw => sw.classList.toggle('on', !!S[sw.dataset.sw]));
+    const v = $('#viewer');
+    if (S.viewing !== null) {
+      const s = shots[S.viewing];
+      v.classList.add('show'); $('#viewImg').style.background = s.g;
+      $('#viewDate').innerHTML = `${s.date}<small>${s.time}${s.kind === 'video' ? ' · Video' : ''}</small>`;
+      $('#player').classList.toggle('show', s.kind === 'video');
+    } else v.classList.remove('show');
+    renderStrip();
+  }
+  // modes, aspects, rotate
+  $$('#modes button').forEach(b => b.onclick = () => { if (S.recording) return; S.mode = b.dataset.m; render(); });
+  $$('#aspects button').forEach(b => b.onclick = () => { S.aspect = b.dataset.a; render(); });
+  $('#rotate').onclick = () => { if (S.aspect !== '1:1') { S.land = !S.land; render(); } };
+  $('#rotate').oncontextmenu = e => { e.preventDefault(); toast('Right-click: turn a sideways camera’s picture'); };
+  // timer & mic: click toggles, right-click chooses
+  $('#timerBtn').onclick = () => { S.timer = S.timer ? 0 : 1; render(); };
+  $('#timerBtn').oncontextmenu = e => { e.preventDefault(); S.timerSec = S.timerSec === 3 ? 10 : 3; S.timer = 1; render(); toast(`${S.timerSec}-second timer`); };
+  $('#micBtn').onclick = () => { S.mic = !S.mic; render(); toast(S.mic ? 'Sound on' : 'Muted'); };
+  $('#micBtn').oncontextmenu = e => { e.preventDefault(); toast('Right-click: Scarlett 2i2 · MacBook Pro Mic · …'); };
+  // overlays
+  $('#badge').onclick = () => { closeSheets(); $('#tray').classList.remove('show'); $('#setSheet').classList.add('show'); };
+  $('#camChip').onclick = () => { closeSheets(); $('#tray').classList.remove('show'); $('#camSheet').classList.add('show'); };
+  $('#fxBtn').onclick = () => { closeSheets(); $('#tray').classList.toggle('show'); };
+  $$('[data-close]').forEach(b => b.onclick = closeSheets);
+  $$('#camSheet [data-cam]').forEach(b => b.onclick = () => {
+    if (b.classList.contains('off')) { toast('MacBook Pro Camera is off while the lid is closed'); return; }
+    $$('#camSheet [data-cam]').forEach(x => x.classList.toggle('sel', x === b)); $('#camName').textContent = b.dataset.cam; closeSheets(); });
+  $$('.tray .seg button').forEach(b => b.onclick = () => { S[b.parentElement.dataset.fx] = b.dataset.v; render(); });
+  $$('#setSheet .seg button').forEach(b => b.onclick = () => { S[b.parentElement.dataset.set] = b.dataset.v; render(); });
+  $$('.switch').forEach(sw => sw.onclick = () => { S[sw.dataset.sw] = !S[sw.dataset.sw]; render(); if (sw.dataset.sw === 'loc' && S.loc) toast('macOS asks once: Allow location?'); });
+  $('#quitBtn').onclick = () => toast('Camera would quit here');
+  $('#folderBtn').onclick = () => toast('Opens ~/Pictures/Camera in Finder');
+  // shutter
+  let recTimer = null;
+  $('#shutter').onclick = () => {
+    if (S.viewing !== null) { S.viewing = null; render(); toast('Back to the camera'); return; }
+    if (S.mode === 'video') {
+      S.recording = !S.recording; clearInterval(recTimer);
+      if (S.recording) { let t = 0; $('#recTime').textContent = '00:00'; recTimer = setInterval(() => { t++; $('#recTime').textContent = `00:${String(t).padStart(2, '0')}`; }, 1000); }
+      render(); return;
+    }
+    const f = $('#flash'); f.classList.add('on'); requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove('on')));
+    shots.unshift({ kind: 'photo', g: 'linear-gradient(180deg,#ffb26b,#ff7a6b 40%,#b0507a 65%,#3b2a5a)', date: 'Today', time: '9:41 AM' }); render();
+  };
+  // viewer
+  $('#backBtn').onclick = () => { S.viewing = null; render(); };
+  $('#prevBtn').onclick = () => { if (S.viewing > 0) { S.viewing--; render(); } };
+  $('#nextBtn').onclick = () => { if (S.viewing < shots.length - 1) { S.viewing++; render(); } };
+  $('#shareBtn').onclick = () => toast('Share: AirDrop, Messages, Photos…');
+  $('#trashBtn').onclick = () => { shots.splice(S.viewing, 1); S.viewing = shots.length ? Math.min(S.viewing, shots.length - 1) : null; render(); toast('Moved to Trash'); };
+  $('#viewImg').ondblclick = () => toast(shots[S.viewing].kind === 'video' ? 'Opens in QuickTime Player' : 'Opens in Preview');
+  // mic meter animation
+  setInterval(() => { const m = $('#meterFill'); if (m) m.style.height = (18 + Math.random() * 62) + '%'; }, 110);
+  // "Show" buttons
+  const reset = () => { closeSheets(); $('#tray').classList.remove('show'); S.viewing = null; S.recording = false; clearInterval(recTimer); };
+  const hl = el => { $$('.hl').forEach(x => x.classList.remove('hl')); if (!el) return; void el.offsetWidth; el.classList.add('hl');
+    if (window.matchMedia('(max-width: 960px)').matches) $('#desktop').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  const show = {
+    settings: () => { reset(); S.mode = 'video'; render(); $('#setSheet').classList.add('show'); hl($('#setSheet')); },
+    badge: () => { reset(); S.mode = 'video'; render(); hl($('#badge')); },
+    clean: () => { reset(); S.mode = 'photo'; render(); hl($('.shutter-row')); },
+    mic: () => { reset(); S.mode = 'video'; render(); hl($('#leftCtl')); setTimeout(() => { S.mode = 'photo'; render(); hl($('#leftCtl')); toast('PHOTO: no mic'); }, 1600); },
+    effects: () => { reset(); S.blur = 'soft'; render(); $('#tray').classList.add('show'); hl($('#tray')); },
+    ring: () => { reset(); S.ring = 'bright'; render(); $('#tray').classList.add('show'); hl($('[data-fx="ring"]')); },
+    camera: () => { reset(); render(); $('#camSheet').classList.add('show'); hl($('#camChip')); },
+    viewer: () => { reset(); S.viewing = 0; render(); hl($('#viewer .ov.top')); },
+    video: () => { reset(); S.viewing = 1; render(); hl($('#player')); },
+    back: () => { reset(); S.viewing = 0; render(); hl($('#shutter')); },
+    actions: () => { reset(); S.viewing = 0; render(); hl($('#shareBtn').parentElement); },
+    location: () => { reset(); render(); $('#setSheet').classList.add('show'); hl($('#locLine')); },
+    folder: () => { reset(); render(); hl($('#folderBtn')); },
+    quit: () => { reset(); render(); $('#setSheet').classList.add('show'); hl($('#quitBtn')); },
+  };
+  $$('[data-show]').forEach(b => b.onclick = () => show[b.dataset.show]());
+  // page theme
+  const themes = ['auto', 'light', 'dark']; let ti = 0;
+  try { const saved = localStorage.getItem('camera-redesign-theme'); if (saved) ti = Math.max(0, themes.indexOf(saved)); } catch (e) {}
+  const applyTheme = () => { const t = themes[ti]; if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = t;
+    $('#theme').textContent = 'Theme: ' + t[0].toUpperCase() + t.slice(1); try { localStorage.setItem('camera-redesign-theme', t); } catch (e) {} };
+  $('#theme').onclick = () => { ti = (ti + 1) % themes.length; applyTheme(); };
+  applyTheme(); render();
+  const m = location.hash.match(/^#show=(\w+)/);
+  if (m && show[m[1]]) show[m[1]]();
+})();
+</script>
+</body>
+</html>

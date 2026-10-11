@@ -10,13 +10,14 @@ by `scripts/build.sh` (no Xcode project). To *use* the app from an agent, read
 |---|---|
 | `Sources/CameraApp/App/main.swift` | The menu-bar item, popover and quit handling |
 | `Sources/CameraApp/App/Scripted.swift` | Command-line capture: `--list`, `--photo`, `--record` |
-| `Sources/CameraApp/Capture/Config.swift` | `Config` and its value types: aspect, resolution, frame rate |
+| `Sources/CameraApp/Capture/Config.swift` | `Config` and its value types: mode, aspect, resolution, frame rate, blur, brighten |
 | `Sources/CameraApp/Capture/Camera.swift` | The capture session, rendering and effects, the feed state, photos, the mic level |
 | `Sources/CameraApp/Capture/Recorder.swift` | Writing the H.264/AAC `.mp4` |
 | `Sources/CameraApp/Capture/Library.swift` | `~/Pictures/Camera`: file names, the recent-captures list |
-| `Sources/CameraApp/Capture/Location.swift` | Location for Save Location, and its EXIF and ISO 6709 forms |
-| `Sources/CameraApp/UI/ContentView.swift` | The popover: preview, controls, shutter, strip |
-| `Sources/CameraApp/UI/CaptureViewer.swift` | Viewing a photo or playing a video in place |
+| `Sources/CameraApp/Capture/Location.swift` | Location for the Location setting, and its EXIF and ISO 6709 forms |
+| `Sources/CameraApp/UI/ContentView.swift` | The popover: preview and its overlays, aspect and mode, shutter row, strip |
+| `Sources/CameraApp/UI/Controls.swift` | The camera menu, aspect picker, Camera Settings panel and effects tray |
+| `Sources/CameraApp/UI/CaptureViewer.swift` | Viewing a photo or playing a video in place, laid out like Photos |
 | `Sources/CameraApp/UI/Components.swift` | Shutter, level meter, recording badge, thumbnail, preview layer |
 | `Sources/CameraApp/UI/RingLight.swift` | The screen-edge ring light windows |
 | `scripts/` | `build.sh` (universal, signed), `install.sh`, `test.sh`, `release.sh`, `make-icon.swift` |
@@ -35,13 +36,14 @@ Each of these fixed a real bug. Keep them when changing the code.
 - **Frame duration is clamped to the format's range.** An out-of-range duration raises an
   Objective-C exception Swift can't catch (this crashed on the Cam Link 4K). Set the format and
   durations again after `startRunning()` and after the mic joins, because both reset them.
-- **The microphone is in the session whenever the camera runs with sound on** (`updateMic`), so
-  its level shows before recording. It joins before `startRunning()`, because joining a running
+- **The microphone is in the session whenever the camera runs in Video with sound on**
+  (`Config.recordsSound`, `updateMic`), so its level shows before recording; Photo never opens it. It joins before `startRunning()`, because joining a running
   session pauses the camera for most of a second, and it never changes during a recording.
-- **One gesture rule in the UI.** A click turns an on/off control on or off (the camera and ⋯
-  menus just open); a right-click shows its
-  choices (`.contextMenu`). Picking a choice also turns the control on.
-- **Location is off by default** and is only written when the person turns on Save Location:
+- **One gesture rule in the UI.** A click turns an on/off control on or off; a right-click shows
+  its choices (`.contextMenu`), and picking one also turns the control on. Settings that change
+  the file live in Camera Settings (the format badge); effects that change the picture live in
+  the effects tray, over the picture.
+- **Location is off by default** and is only written when the person turns on Location:
   EXIF GPS in photos, an ISO 6709 `location` tag in videos. Scripted runs never save it.
 - **Timestamps.** Samples more than 1 s off the host clock are dropped (a Continuity Camera's
   first frames can be minutes off), and video and audio appends must strictly increase.
@@ -79,5 +81,6 @@ APPLE_ID=… APPLE_TEAM_ID=… APPLE_APP_SPECIFIC_PASSWORD=… ./scripts/release
 ```
 
 It builds with a secure timestamp, notarizes, staples, and publishes `v<version>` on GitHub.
-`docs/preview.png` shows the real popover with a synthetic picture; never put a real camera
-capture or anyone's screen in the repo.
+The images in `docs/` show the real popover with a synthetic picture; never put a real camera
+capture or anyone's screen in the repo. `docs/design/index.html` is the interactive design
+prototype the README links to, served by GitHub Pages from `docs/`.

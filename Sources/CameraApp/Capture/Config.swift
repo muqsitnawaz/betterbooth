@@ -24,16 +24,34 @@ enum Aspect: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+enum Mode: String, CaseIterable, Codable { case photo, video }
+
 enum Resolution: Int, CaseIterable, Identifiable, Codable {
     case p720 = 720, p1080 = 1080, p1440 = 1440, p2160 = 2160
     var id: Int { rawValue }
     var label: String { self == .p2160 ? "4K" : "\(rawValue)p" }
+    /// The short name on the preview's badge, as Apple's Camera writes it.
+    var badge: String { self == .p1080 ? "HD" : label }
+}
+
+/// Background blur, with the person kept sharp.
+enum Blur: String, CaseIterable, Identifiable, Codable {
+    case off, soft, strong
+    var id: Self { self }
+    /// Radius in pixels at 1080p; larger outputs scale it.
+    var radius: Double { [Self.off: 0, .soft: 10, .strong: 28][self]! }
+}
+
+enum Brighten: String, CaseIterable, Identifiable, Codable {
+    case off, more, most
+    var id: Self { self }
+    /// Stops of exposure added.
+    var stops: Double { [Self.off: 0, .more: 0.75, .most: 1.5][self]! }
 }
 
 enum FrameRate: String, CaseIterable, Identifiable, Codable {
     case f23_98 = "23.98", f24 = "24", f30 = "30", f60 = "60"
     var id: String { rawValue }
-    var label: String { "\(rawValue) fps" }
     var value: Double { self == .f23_98 ? 24_000.0 / 1001 : Double(rawValue)! }
     var frameDuration: CMTime { self == .f23_98 ? CMTime(value: 1001, timescale: 24_000) : CMTime(value: 1, timescale: CMTimeScale(value)) }
 
@@ -50,18 +68,14 @@ struct Config: Equatable, Codable {
     var resolution: Resolution = .p1080
     var frameRate: FrameRate = .f30
     var mirrored = true
+    var mode: Mode = .photo
     var micOn = true
     /// The microphone to record from; nil is the system's default input.
     var micID: String?
     /// Clockwise turn per camera, for one mounted sideways or upside down.
     var rotations: [String: Int] = [:]
-    /// Each effect keeps its amount while it is off, so a click turns back on what you had.
-    var brighten = false
-    /// Exposure added, in stops.
-    var brightness = 1.0
-    var blurBackground = false
-    /// Blur radius in pixels at 1080p; larger outputs scale it.
-    var blurRadius = 16.0
+    var blur: Blur = .off
+    var brighten: Brighten = .off
     /// Writes where a capture was taken into the file. Off by default: files get shared.
     var saveLocation = false
 
@@ -69,6 +83,8 @@ struct Config: Equatable, Codable {
         get { deviceID.flatMap { rotations[$0] } ?? 0 }
         set { if let deviceID { rotations[deviceID] = ((newValue % 360) + 360) % 360 } }
     }
+    /// Only a video records sound, so a photo never opens the microphone.
+    var recordsSound: Bool { mode == .video && micOn }
     var aspectLabel: String { aspect.label(landscape: landscape) }
     var ratio: CGFloat { aspect.ratio(landscape: landscape) }
 
@@ -97,13 +113,12 @@ struct Config: Equatable, Codable {
         if let v = try? c.decodeIfPresent(Resolution.self, forKey: .resolution) { resolution = v }
         if let v = try? c.decodeIfPresent(FrameRate.self, forKey: .frameRate) { frameRate = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .mirrored) { mirrored = v }
+        if let v = try? c.decodeIfPresent(Mode.self, forKey: .mode) { mode = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .micOn) { micOn = v }
         micID = try? c.decodeIfPresent(String.self, forKey: .micID)
         if let v = try? c.decodeIfPresent([String: Int].self, forKey: .rotations) { rotations = v }
-        if let v = try? c.decodeIfPresent(Bool.self, forKey: .brighten) { brighten = v }
-        if let v = try? c.decodeIfPresent(Double.self, forKey: .brightness) { brightness = v }
-        if let v = try? c.decodeIfPresent(Bool.self, forKey: .blurBackground) { blurBackground = v }
-        if let v = try? c.decodeIfPresent(Double.self, forKey: .blurRadius) { blurRadius = v }
+        if let v = try? c.decodeIfPresent(Blur.self, forKey: .blur) { blur = v }
+        if let v = try? c.decodeIfPresent(Brighten.self, forKey: .brighten) { brighten = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .saveLocation) { saveLocation = v }
     }
 

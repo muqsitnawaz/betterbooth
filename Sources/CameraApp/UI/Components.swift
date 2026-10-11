@@ -4,22 +4,35 @@ import SwiftUI
 struct ShutterButton: View {
     let mode: Mode
     let recording: Bool
+    /// While a capture is shown, the shutter only brings the live picture back.
+    let returnsToCamera: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             ZStack {
-                Circle().strokeBorder(.primary.opacity(0.8), lineWidth: 3).frame(width: 52, height: 52)
-                RoundedRectangle(cornerRadius: recording ? 5 : 21)
-                    .fill(mode == .photo ? Color.white : Color.red)
-                    .frame(width: recording ? 22 : 42, height: recording ? 22 : 42)
+                Circle().strokeBorder(.primary.opacity(0.8), lineWidth: 3).frame(width: 56, height: 56)
+                RoundedRectangle(cornerRadius: recording ? 5 : 23)
+                    .fill(returnsToCamera ? Color.gray.opacity(0.5) : mode == .photo ? Color.white : Color.red)
+                    .frame(width: recording ? 22 : 46, height: recording ? 22 : 46)
                     .shadow(color: .black.opacity(0.2), radius: 1)
             }
             .contentShape(Circle())
             .animation(.spring(duration: 0.25), value: recording)
         }
         .buttonStyle(.plain)
-        .help(mode == .photo ? "Take photo (Space)" : recording ? "Stop recording (Space)" : "Start recording (Space)")
+        .help(returnsToCamera ? "Back to the camera (Space)"
+              : mode == .photo ? "Take photo (Space)" : recording ? "Stop recording (Space)" : "Start recording (Space)")
+    }
+}
+
+extension View {
+    /// The dark capsule that labels and buttons on the picture sit in.
+    func overlayChip() -> some View {
+        padding(.horizontal, 9).padding(.vertical, 5)
+            .background(.black.opacity(0.45), in: Capsule())
+            .foregroundStyle(.white)
+            .contentShape(Capsule())
     }
 }
 
@@ -49,9 +62,7 @@ struct RecordingBadge: View {
                 Circle().fill(.red).frame(width: 8, height: 8)
                 Text(String(format: "%02d:%02d", s / 60, s % 60)).font(.caption.monospacedDigit().weight(.semibold))
             }
-            .padding(.horizontal, 7).padding(.vertical, 3)
-            .background(.black.opacity(0.55), in: Capsule())
-            .foregroundStyle(.white)
+            .overlayChip()
         }
     }
 }
@@ -69,8 +80,8 @@ struct Thumbnail: View {
                     Color.secondary.opacity(0.2)
                 }
             }
-            .frame(width: 64, height: 64)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .frame(width: 48, height: 48)
+            .clipShape(RoundedRectangle(cornerRadius: 7))
             if url.pathExtension.lowercased() == "mp4" {
                 Image(systemName: "video.fill")
                     .font(.system(size: 9))
@@ -80,7 +91,7 @@ struct Thumbnail: View {
             }
         }
         .help(url.lastPathComponent)
-        .task(id: url) { image = await Library.thumbnail(for: url, size: 128) }
+        .task(id: url) { image = await Library.thumbnail(for: url, size: 96) }
     }
 }
 

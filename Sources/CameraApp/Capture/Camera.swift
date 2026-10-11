@@ -116,7 +116,7 @@ final class Camera: NSObject, ObservableObject {
             nc.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in self?.refreshDevices() }
         }
         refreshDevices()
-        // The menu shows whether location is allowed; it observes the camera, not the locator.
+        // Camera Settings shows whether location is allowed; it observes the camera, not the locator.
         locatorChanges = locator.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
     }
 
@@ -126,7 +126,7 @@ final class Camera: NSObject, ObservableObject {
         guard config != old else { return }
         // The output size and camera are fixed for the length of a recording.
         if isRecording && (config.outputSize != old.outputSize || config.deviceID != old.deviceID || config.rotation != old.rotation
-                           || config.micOn != old.micOn || config.micID != old.micID) {
+                           || config.recordsSound != old.recordsSound || config.micID != old.micID) {
             config = old  // setting a property inside its own didSet does not re-enter didSet
             return
         }
@@ -166,8 +166,7 @@ final class Camera: NSObject, ObservableObject {
         let config = config
         let device = devices.first { $0.uniqueID == config.deviceID }
         let render = Render(deviceID: device?.uniqueID, size: config.outputSize, mirrored: config.mirrored, rotation: config.rotation,
-                            exposure: config.brighten ? config.brightness : 0,
-                            blur: config.blurBackground ? config.blurRadius * Double(config.resolution.rawValue) / 1080 : 0)
+                            exposure: config.brighten.stops, blur: config.blur.radius * Double(config.resolution.rawValue) / 1080)
         updateMic()
         updateLocation()
         if device?.uniqueID != appliedDeviceID {
@@ -315,14 +314,14 @@ final class Camera: NSObject, ObservableObject {
 
     /// The chosen microphone, else the system default; nil when sound is off or not allowed.
     private var wantedMic: AVCaptureDevice? {
-        guard config.micOn, AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return nil }
+        guard config.recordsSound, AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return nil }
         return mics.first { $0.uniqueID == config.micID } ?? AVCaptureDevice.default(for: .audio)
     }
 
-    /// Main queue. The mic stays in the session while the camera runs, for the level meter.
+    /// Main queue. In Video the mic stays in the session while the camera runs, for the level meter.
     private func updateMic() {
         guard !isRecording else { return }
-        if running, config.micOn, !askedForMic, AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+        if running, config.recordsSound, !askedForMic, AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
             askedForMic = true
             AVCaptureDevice.requestAccess(for: .audio) { _ in DispatchQueue.main.async { self.updateMic() } }
         }
@@ -404,7 +403,7 @@ final class Camera: NSObject, ObservableObject {
         guard !isRecording else { return }
         if let notReady { return report(notReady) }
         // Ask for the microphone before recording starts, so a pending prompt never holds a Stop.
-        if config.micOn, AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+        if config.recordsSound, AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
             AVCaptureDevice.requestAccess(for: .audio) { _ in DispatchQueue.main.async { self.startRecording() } }
             return
         }
@@ -413,7 +412,7 @@ final class Camera: NSObject, ObservableObject {
         let location = capturedLocation()
         let mic = wantedMic
         let audio = mic != nil
-        if config.micOn && !audio {
+        if config.recordsSound && !audio {
             report("Recording without sound: allow Camera in System Settings → Privacy & Security → Microphone")
         }
         recordingSince = Date()

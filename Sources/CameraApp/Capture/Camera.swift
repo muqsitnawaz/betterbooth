@@ -42,9 +42,9 @@ final class Camera: NSObject, ObservableObject {
     private let videoOutput = AVCaptureVideoDataOutput()
     private let audioOutput = AVCaptureAudioDataOutput()
     /// Session inputs and the camera's format are only touched on this queue.
-    private let sessionQueue = DispatchQueue(label: "betterbooth.session")
+    private let sessionQueue = DispatchQueue(label: "camera.session")
     /// Frames, audio samples, the render settings and the recorder are only touched on this queue.
-    private let frameQueue = DispatchQueue(label: "betterbooth.frames", qos: .userInteractive)
+    private let frameQueue = DispatchQueue(label: "camera.frames", qos: .userInteractive)
     private let ciContext = CIContext(options: [.cacheIntermediates: false])
     private let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
 
@@ -207,7 +207,7 @@ final class Camera: NSObject, ObservableObject {
               let range = format.videoSupportedFrameRateRanges.first(where: rate.fits)
         else {
             mode = CameraMode()
-            return report("\(device.localizedName) offers no video mode BetterBooth can use")
+            return report("\(device.localizedName) offers no video mode Camera can use")
         }
         // A duration outside the range is an uncatchable exception (Cam Link 4K's 30 fps isn't exactly 1/30).
         let duration = min(max(rate.frameDuration, range.minFrameDuration), range.maxFrameDuration)
@@ -334,7 +334,7 @@ final class Camera: NSObject, ObservableObject {
     private func capturedLocation() -> CLLocation? {
         guard config.saveLocation else { return nil }
         if let location = locator.recent { return location }
-        report(locator.denied ? "Saved without location: allow BetterBooth in System Settings → Privacy & Security → Location Services"
+        report(locator.denied ? "Saved without location: allow Camera in System Settings → Privacy & Security → Location Services"
                               : "Saved without location: no fix yet")
         return nil
     }
@@ -414,7 +414,7 @@ final class Camera: NSObject, ObservableObject {
         let mic = wantedMic
         let audio = mic != nil
         if config.micOn && !audio {
-            report("Recording without sound: allow BetterBooth in System Settings → Privacy & Security → Microphone")
+            report("Recording without sound: allow Camera in System Settings → Privacy & Security → Microphone")
         }
         recordingSince = Date()
         sessionQueue.async {

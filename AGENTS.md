@@ -1,24 +1,24 @@
-# BetterBooth: notes for coding agents
+# Camera: notes for coding agents
 
-BetterBooth is a macOS 14+ menu-bar camera in Swift: a SwiftPM executable packaged into an app
+Camera is a macOS 14+ menu-bar camera in Swift: a SwiftPM executable packaged into an app
 by `scripts/build.sh` (no Xcode project). To *use* the app from an agent, read
-[`skills/betterbooth/SKILL.md`](skills/betterbooth/SKILL.md). This file is for changing it.
+[`skills/camera/SKILL.md`](skills/camera/SKILL.md). This file is for changing it.
 
 ## Layout
 
 | File | Owns |
 |---|---|
-| `Sources/BetterBooth/App/main.swift` | The menu-bar item, popover and quit handling |
-| `Sources/BetterBooth/App/Scripted.swift` | Command-line capture: `--list`, `--photo`, `--record` |
-| `Sources/BetterBooth/Capture/Config.swift` | `Config` and its value types: aspect, resolution, frame rate |
-| `Sources/BetterBooth/Capture/Camera.swift` | The capture session, rendering and effects, the feed state, photos, the mic level |
-| `Sources/BetterBooth/Capture/Recorder.swift` | Writing the H.264/AAC `.mp4` |
-| `Sources/BetterBooth/Capture/Library.swift` | `~/Pictures/BetterBooth`: file names, the recent-captures list |
-| `Sources/BetterBooth/Capture/Location.swift` | Location for Save Location, and its EXIF and ISO 6709 forms |
-| `Sources/BetterBooth/UI/ContentView.swift` | The popover: preview, controls, shutter, strip |
-| `Sources/BetterBooth/UI/CaptureViewer.swift` | Viewing a photo or playing a video in place |
-| `Sources/BetterBooth/UI/Components.swift` | Shutter, level meter, recording badge, thumbnail, preview layer |
-| `Sources/BetterBooth/UI/RingLight.swift` | The screen-edge ring light windows |
+| `Sources/CameraApp/App/main.swift` | The menu-bar item, popover and quit handling |
+| `Sources/CameraApp/App/Scripted.swift` | Command-line capture: `--list`, `--photo`, `--record` |
+| `Sources/CameraApp/Capture/Config.swift` | `Config` and its value types: aspect, resolution, frame rate |
+| `Sources/CameraApp/Capture/Camera.swift` | The capture session, rendering and effects, the feed state, photos, the mic level |
+| `Sources/CameraApp/Capture/Recorder.swift` | Writing the H.264/AAC `.mp4` |
+| `Sources/CameraApp/Capture/Library.swift` | `~/Pictures/Camera`: file names, the recent-captures list |
+| `Sources/CameraApp/Capture/Location.swift` | Location for Save Location, and its EXIF and ISO 6709 forms |
+| `Sources/CameraApp/UI/ContentView.swift` | The popover: preview, controls, shutter, strip |
+| `Sources/CameraApp/UI/CaptureViewer.swift` | Viewing a photo or playing a video in place |
+| `Sources/CameraApp/UI/Components.swift` | Shutter, level meter, recording badge, thumbnail, preview layer |
+| `Sources/CameraApp/UI/RingLight.swift` | The screen-edge ring light windows |
 | `scripts/` | `build.sh` (universal, signed), `install.sh`, `test.sh`, `release.sh`, `make-icon.swift` |
 
 ## Invariants
@@ -61,10 +61,10 @@ Builds prove nothing about a camera app. Before calling a change done:
 ```sh
 ./scripts/build.sh                      # universal app in build/
 ./scripts/test.sh [camera]              # real captures: sizes, frame rates, sound (needs ffprobe)
-build/BetterBooth.app/Contents/MacOS/BetterBooth --list
+build/Camera.app/Contents/MacOS/Camera --list
 ```
 
-`test.sh` writes into `~/Pictures/BetterBooth`; move what it made to the Trash afterwards. For
+`test.sh` writes into `~/Pictures/Camera`; move what it made to the Trash afterwards. For
 a UI change, look at the popover itself: open it from the menu bar and take a screenshot.
 Cameras are shared hardware, so a capture fails or stutters while another app holds the same
 camera. Check that before blaming the code.

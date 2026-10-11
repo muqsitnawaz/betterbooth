@@ -39,7 +39,7 @@ struct CaptureViewer: View {
                     pill(nil, icon: "chevron.left", help: "Newer (←)") { step(-1) }
                         .keyboardShortcut(.leftArrow, modifiers: [])
                     Spacer()
-                    Text(url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "BetterBooth ", with: ""))
+                    Text(url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: #"^(Camera|BetterBooth) "#, with: "", options: .regularExpression))
                         .font(.caption2)
                         .padding(.horizontal, 6).padding(.vertical, 3)
                         .background(.black.opacity(0.5), in: Capsule())

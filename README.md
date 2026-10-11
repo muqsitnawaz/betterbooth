@@ -1,4 +1,4 @@
-# BetterBooth
+# Camera
 
 [![Latest release](https://img.shields.io/github/v/release/muqsitnawaz/betterbooth?label=version&color=2563eb)](https://github.com/muqsitnawaz/betterbooth/releases/latest)
 [![Free and open source](https://img.shields.io/badge/price-free-16a34a)](LICENSE)
@@ -6,11 +6,14 @@
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-111827?logo=apple)](#requirements)
 [![Apple silicon and Intel](https://img.shields.io/badge/Apple%20silicon%20%2B%20Intel-universal-111827)](#requirements)
 
-A better Photo Booth that lives in your menu bar and records vertical video. Click the icon for a
-live preview, then take a photo or record a video in 9:16, 4:5, 3:4 or 1:1, at 720p to 4K and
-23.98, 24, 30 or 60 fps.
+The camera app macOS never shipped. It lives in your menu bar and records vertical video: click
+the icon for a live preview, then take a photo or record a video in 9:16, 4:5, 3:4 or 1:1, at 720p
+to 4K and 23.98, 24, 30 or 60 fps.
 
-<p align="center"><img src="docs/preview.png" width="600" alt="BetterBooth's popover under the menu bar: a 9:16 live preview, the camera menu, aspect picker and rotate button, resolution and frame rate, the mirror, blur, brighten, ring light, mic with its level meter, timer and more controls, and recent captures"></p>
+Formerly BetterBooth. Version 0.4 keeps your settings and permissions, and moves your captures from
+`~/Pictures/BetterBooth` to `~/Pictures/Camera`; delete the old `BetterBooth.app` once Camera runs.
+
+<p align="center"><img src="docs/preview.png" width="600" alt="Camera's popover under the menu bar: a 9:16 live preview, the camera menu, aspect picker and rotate button, resolution and frame rate, the mirror, blur, brighten, ring light, mic with its level meter, timer and more controls, and recent captures"></p>
 
 Download the latest signed and notarized app from
 [Releases](https://github.com/muqsitnawaz/betterbooth/releases/latest), unzip it and move it to
@@ -30,11 +33,11 @@ Every on/off control works the same way: **click to turn it on or off, right-cli
 - **Timer.** Click for a countdown; right-click for 3 or 10 seconds.
 - **Location.** ⋯ → Save Location writes where a photo or video was taken into the file. Off
   until you turn it on.
-- **The most real pixels.** For each aspect and frame rate BetterBooth picks the camera mode that keeps
+- **The most real pixels.** For each aspect and frame rate Camera picks the camera mode that keeps
   the most of the sensor: on a MacBook camera, 9:16 uses its native 1080×1920 mode. Rates a camera
   can't deliver are greyed out, and sizes above its real pixels are marked "upscaled".
-- **Searchable files.** Captures go to `~/Pictures/BetterBooth`, named with the camera, aspect,
-  resolution and frame rate: `BetterBooth 2026-10-11 01.18.09 cam-link-4k 9x16 1080p 30fps.mp4`.
+- **Searchable files.** Captures go to `~/Pictures/Camera`, named with the camera, aspect,
+  resolution and frame rate: `Camera 2026-10-11 01.18.09 cam-link-4k 9x16 1080p 30fps.mp4`.
   Click one in the strip to view or play it in place, then share it, or drag it out.
 
 Video is H.264 with AAC sound in an `.mp4`; photos are JPEG. Drag the popover off the menu bar to
@@ -50,15 +53,15 @@ keep it open as a window.
   DSLR camera into a source, at up to 60 fps.
 - **USB webcams and audio interfaces.** Any camera and any microphone macOS sees.
 - **A camera mounted on its side.** Turn its picture upright once and the full sensor becomes a
-  vertical frame; BetterBooth remembers it for that camera.
-- **A closed MacBook lid.** The built-in camera is off, so BetterBooth uses another connected
+  vertical frame; Camera remembers it for that camera.
+- **A closed MacBook lid.** The built-in camera is off, so Camera uses another connected
   camera and switches back to your choice when it returns.
 
 ## For AI agents
 
-BetterBooth captures from the command line without a window, which makes it a camera an agent
+Camera captures from the command line without a window, which makes it a camera an agent
 can call: one command, the saved file's path on stdout, a reason and exit code 1 on failure.
-[`skills/betterbooth/SKILL.md`](skills/betterbooth/SKILL.md) is a ready-made skill to give your
+[`skills/camera/SKILL.md`](skills/camera/SKILL.md) is a ready-made skill to give your
 agent; copy the folder into your agent's skills directory (for Claude Code,
 `~/.claude/skills/`). Agents changing the code start at [`AGENTS.md`](AGENTS.md).
 
@@ -71,7 +74,7 @@ agent; copy the folder into your agent's skills directory (for Claude Code,
 
 ```sh
 ./scripts/install.sh   # build, sign, copy to /Applications and launch
-./scripts/build.sh     # only build build/BetterBooth.app
+./scripts/build.sh     # only build build/Camera.app
 ./scripts/release.sh notes.md   # notarize and publish the Info.plist version on GitHub
 ```
 
@@ -83,22 +86,22 @@ hoc, which runs the same, but macOS asks for camera permission again after each 
 
 ## Permissions
 
-BetterBooth asks for the camera the first time you open it, for the microphone the first time you
+Camera asks for the camera the first time you open it, for the microphone the first time you
 open it with sound on, and for your location the first time you turn on Save Location. While the
 popover is open with sound on, the microphone is live for the level meter, so macOS shows its
 microphone indicator. If you said no, turn it back on in System Settings → Privacy & Security →
-Camera (or Microphone). Without microphone access, videos record without sound and BetterBooth says
+Camera (or Microphone). Without microphone access, videos record without sound and Camera says
 so.
 
-A MacBook's own camera is off while its lid is closed. BetterBooth then uses another connected
+A MacBook's own camera is off while its lid is closed. Camera then uses another connected
 camera, and tells you if you pick the built-in one.
 
 ## Scripted capture
 
-With no window, BetterBooth captures once, prints the saved file's path and quits:
+With no window, Camera captures once, prints the saved file's path and quits:
 
 ```sh
-BB=/Applications/BetterBooth.app/Contents/MacOS/BetterBooth
+BB=/Applications/Camera.app/Contents/MacOS/Camera
 $BB --list                                    # cameras and microphones
 $BB --photo --aspect 9:16 --camera iphone
 $BB --record 5 --aspect 9:16 --res 1080 --fps 24 --camera "cam link" --mic scarlett
@@ -108,14 +111,14 @@ $BB --record 5 --aspect 9:16 --res 1080 --fps 24 --camera "cam link" --mic scarl
 `--blur 16` blurs the background and `--brighten 1` adds a stop of exposure.
 `--camera` and `--mic` match part of a device's name. An unknown option or invalid value is an
 error that lists the valid ones. Scripted runs never change the settings the app remembers. The full reference is in
-[`skills/betterbooth/SKILL.md`](skills/betterbooth/SKILL.md).
+[`skills/camera/SKILL.md`](skills/camera/SKILL.md).
 
 ## Testing
 
 `./scripts/test.sh [camera]` takes real photos in every aspect and records at 24 and 30 fps, then
 checks each file's size, frame rate and sound. It needs a camera that does both rates, a
 microphone, and `ffprobe` (`brew install ffmpeg`), and it saves its captures to
-`~/Pictures/BetterBooth`.
+`~/Pictures/Camera`.
 
 ## License
 

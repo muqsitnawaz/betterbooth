@@ -77,7 +77,7 @@ struct ContentView: View {
             if camera.access == .denied {
                 VStack(spacing: 8) {
                     Image(systemName: "video.slash.fill").font(.title)
-                    Text("BetterBooth needs camera access.").font(.callout)
+                    Text("Camera needs access to your camera.").font(.callout)
                     Button("Open Privacy Settings") {
                         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera")!)
                     }
@@ -305,8 +305,8 @@ struct ContentView: View {
             }
             Button("macOS Video Effects…") { AVCaptureDevice.showSystemUserInterface(.videoEffects) }
             Divider()
-            Button("Open BetterBooth Folder") { NSWorkspace.shared.open(Library.folder) }
-            Button("Quit BetterBooth") { NSApp.terminate(nil) }
+            Button("Open Camera Folder") { NSWorkspace.shared.open(Library.folder) }
+            Button("Quit Camera") { NSApp.terminate(nil) }
         } label: {
             Image(systemName: "ellipsis.circle")
         }
@@ -365,7 +365,7 @@ struct ContentView: View {
             }
             .buttonStyle(.borderless)
             .imageScale(.large)
-            .help("Open the BetterBooth folder")
+            .help("Open the Camera folder")
             .frame(width: 130, alignment: .trailing)
         }
     }

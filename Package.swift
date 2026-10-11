@@ -2,9 +2,9 @@
 import PackageDescription
 
 let package = Package(
-    name: "BetterBooth",
+    name: "Camera",
     platforms: [.macOS(.v14)],
     targets: [
-        .executableTarget(name: "BetterBooth", path: "Sources/BetterBooth")
+        .executableTarget(name: "CameraApp", path: "Sources/CameraApp")
     ]
 )

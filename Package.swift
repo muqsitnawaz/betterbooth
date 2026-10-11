@@ -2,9 +2,9 @@
 import PackageDescription
 
 let package = Package(
-    name: "VertCam",
+    name: "BetterBooth",
     platforms: [.macOS(.v14)],
     targets: [
-        .executableTarget(name: "VertCam", path: "Sources/VertCam")
+        .executableTarget(name: "BetterBooth", path: "Sources/BetterBooth")
     ]
 )

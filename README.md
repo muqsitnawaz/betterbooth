@@ -1,18 +1,25 @@
-# VertCam
+# BetterBooth
 
-A menu-bar camera for macOS that records vertical video. Click the icon for a live preview, then
-take a photo or record a video in 9:16, 4:5, 3:4 or 1:1, at 720p to 4K and 23.98, 24, 30 or 60 fps.
+A better Photo Booth that lives in your menu bar and records vertical video. Click the icon for a
+live preview, then take a photo or record a video in 9:16, 4:5, 3:4 or 1:1, at 720p to 4K and
+23.98, 24, 30 or 60 fps.
+
+<p align="center"><img src="docs/preview.png" width="600" alt="BetterBooth's popover under the menu bar: a 9:16 live preview, the aspect picker, resolution and frame rate, and recent captures"></p>
+
+Download the latest signed and notarized app from
+[Releases](https://github.com/muqsitnawaz/betterbooth/releases/latest), unzip it and move it to
+Applications.
 
 - **Orientation.** The button beside the aspect picker (or R) turns the frame on its side: 9:16
   becomes 16:9, 4:5 becomes 5:4.
 - **A camera mounted sideways.** ⋯ → Turn Picture turns its picture upright, remembered per camera,
   so a camera on its side records full-frame vertical video.
 - **Microphone.** The mic button picks any connected microphone, the system default, or no sound.
-- **The most real pixels.** For each aspect and frame rate VertCam picks the camera mode that keeps
+- **The most real pixels.** For each aspect and frame rate BetterBooth picks the camera mode that keeps
   the most of the sensor: on a MacBook camera, 9:16 uses its native 1080×1920 mode. Rates a camera
   can't deliver are greyed out, and sizes above its real pixels are marked "upscaled".
-- **Searchable files.** Captures go to `~/Pictures/VertCam`, named with the camera, aspect,
-  resolution and frame rate: `VertCam 2026-10-11 01.18.09 cam-link-4k 9x16 1080p 30fps.mp4`.
+- **Searchable files.** Captures go to `~/Pictures/BetterBooth`, named with the camera, aspect,
+  resolution and frame rate: `BetterBooth 2026-10-11 01.18.09 cam-link-4k 9x16 1080p 30fps.mp4`.
   Click one in the strip to view or play it in place; drag it out to share.
 
 Video is H.264 with AAC sound in an `.mp4`; photos are JPEG. Drag the popover off the menu bar to
@@ -27,7 +34,8 @@ keep it open as a window.
 
 ```sh
 ./scripts/install.sh   # build, sign, copy to /Applications and launch
-./scripts/build.sh     # only build build/VertCam.app
+./scripts/build.sh     # only build build/BetterBooth.app
+./scripts/release.sh notes.md   # notarize and publish the Info.plist version on GitHub
 ```
 
 `swift run` works for a quick try, but the bare binary borrows your terminal's camera and
@@ -38,20 +46,20 @@ hoc, which runs the same, but macOS asks for camera permission again after each 
 
 ## Permissions
 
-VertCam asks for the camera the first time you open it, and for the microphone the first time
+BetterBooth asks for the camera the first time you open it, and for the microphone the first time
 you record with sound. If you said no, turn it back on in System Settings → Privacy & Security →
-Camera (or Microphone). Without microphone access, videos record without sound and VertCam says
+Camera (or Microphone). Without microphone access, videos record without sound and BetterBooth says
 so.
 
-A MacBook's own camera is off while its lid is closed. VertCam then uses another connected
+A MacBook's own camera is off while its lid is closed. BetterBooth then uses another connected
 camera, and tells you if you pick the built-in one.
 
 ## Scripted capture
 
-With no window, VertCam captures once, prints the saved file's path and quits:
+With no window, BetterBooth captures once, prints the saved file's path and quits:
 
 ```sh
-open -n -W --stdout /dev/stdout /Applications/VertCam.app --args \
+open -n -W --stdout /dev/stdout /Applications/BetterBooth.app --args \
   --record 5 --aspect 9:16 --res 1080 --fps 24 --camera "Cam Link" --mic Scarlett
 ```
 
@@ -64,7 +72,7 @@ runs never change the settings the app remembers.
 `./scripts/test.sh [camera]` takes real photos in every aspect and records at 24 and 30 fps, then
 checks each file's size, frame rate and sound. It needs a camera that does both rates, a
 microphone, and `ffprobe` (`brew install ffmpeg`), and it saves its captures to
-`~/Pictures/VertCam`.
+`~/Pictures/BetterBooth`.
 
 ## License
 

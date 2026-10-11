@@ -1,14 +1,14 @@
 #!/bin/bash
-# Captures real photos and videos with build/VertCam.app and checks each file's size, frame rate
+# Captures real photos and videos with build/BetterBooth.app and checks each file's size, frame rate
 # and audio. Needs a camera that does 24 and 30 fps, a microphone, and ffprobe (from ffmpeg).
-# Pass part of a camera's name to pick one; otherwise VertCam's own choice is used. Every capture
-# must finish in 20 s. Writes into ~/Pictures/VertCam like the app does.
+# Pass part of a camera's name to pick one; otherwise BetterBooth's own choice is used. Every capture
+# must finish in 20 s. Writes into ~/Pictures/BetterBooth like the app does.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 command -v ffprobe >/dev/null || { echo "test.sh needs ffprobe: brew install ffmpeg"; exit 1; }
 CAMERA_ARGS=()
 [ $# -gt 0 ] && CAMERA_ARGS=(--camera "$1")
-BIN=build/VertCam.app/Contents/MacOS/VertCam
+BIN=build/BetterBooth.app/Contents/MacOS/BetterBooth
 ./scripts/build.sh >/dev/null || exit 1  # never test a stale app
 fail=0
 

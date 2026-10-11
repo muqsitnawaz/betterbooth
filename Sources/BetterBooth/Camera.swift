@@ -146,9 +146,9 @@ final class Camera: NSObject, ObservableObject {
     private let videoOutput = AVCaptureVideoDataOutput()
     private let audioOutput = AVCaptureAudioDataOutput()
     /// Session inputs and the camera's format are only touched on this queue.
-    private let sessionQueue = DispatchQueue(label: "vertcam.session")
+    private let sessionQueue = DispatchQueue(label: "betterbooth.session")
     /// Frames, audio samples, the render settings and the recorder are only touched on this queue.
-    private let frameQueue = DispatchQueue(label: "vertcam.frames", qos: .userInteractive)
+    private let frameQueue = DispatchQueue(label: "betterbooth.frames", qos: .userInteractive)
     private let ciContext = CIContext(options: [.cacheIntermediates: false])
     private let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
 
@@ -294,7 +294,7 @@ final class Camera: NSObject, ObservableObject {
               let range = format.videoSupportedFrameRateRanges.first(where: rate.fits)
         else {
             mode = CameraMode()
-            return report("\(device.localizedName) offers no video mode VertCam can use")
+            return report("\(device.localizedName) offers no video mode BetterBooth can use")
         }
         // AVFoundation raises an uncatchable exception for a duration outside the format's range,
         // and fixed-rate cameras such as the Cam Link 4K report 30 fps as a duration that is not
@@ -471,7 +471,7 @@ final class Camera: NSObject, ObservableObject {
             ? mics.first { $0.uniqueID == config.micID } ?? AVCaptureDevice.default(for: .audio) : nil
         let audio = mic != nil
         if config.micOn && !audio {
-            report("Recording without sound: allow VertCam in System Settings → Privacy & Security → Microphone")
+            report("Recording without sound: allow BetterBooth in System Settings → Privacy & Security → Microphone")
         }
         recordingSince = Date()
         sessionQueue.async {

@@ -327,6 +327,8 @@ struct ContentView: View {
             set: { on in
                 var chosen = Set(ringLightScreens.map(\.displayID))
                 if on { chosen.insert(screen.displayID) } else { chosen.remove(screen.displayID) }
+                // Unchecking the last display turns the light off rather than back to the main one.
+                guard !chosen.isEmpty else { ringLightOn = false; return }
                 ringLightDisplays = chosen.sorted().joined(separator: ",")
                 ringLightOn = true
             })

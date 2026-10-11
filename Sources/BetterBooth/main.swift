@@ -63,7 +63,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     // Dragging the popover off the menu bar turns it into a floating window.
     func popoverShouldDetach(_ popover: NSPopover) -> Bool { true }
 
-    func popoverDidClose(_ notification: Notification) { camera.stop() }
+    func popoverDidClose(_ notification: Notification) {
+        camera.stop()
+        RingLight.hide()
+    }
 
     func applicationWillTerminate(_ notification: Notification) {
         guard camera.isRecording else { return }

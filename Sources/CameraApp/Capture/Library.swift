@@ -6,10 +6,15 @@ final class Library: ObservableObject {
     static let folder: URL = {
         let pictures = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask)[0]
         let url = pictures.appendingPathComponent("Camera", isDirectory: true)
-        // Captures from before the rename (BetterBooth 0.3 and earlier) move over once.
-        let old = pictures.appendingPathComponent("BetterBooth", isDirectory: true)
-        if !FileManager.default.fileExists(atPath: url.path) { try? FileManager.default.moveItem(at: old, to: url) }
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        // Captures from before the rename (BetterBooth 0.3 and earlier) move over; retried each launch until they have.
+        let fm = FileManager.default, old = pictures.appendingPathComponent("BetterBooth", isDirectory: true)
+        if let leftovers = try? fm.contentsOfDirectory(at: old, includingPropertiesForKeys: nil), !leftovers.isEmpty {
+            if !fm.fileExists(atPath: url.path) { try? fm.moveItem(at: old, to: url) }
+            for file in leftovers where fm.fileExists(atPath: file.path) {
+                try? fm.moveItem(at: file, to: url.appendingPathComponent(file.lastPathComponent))
+            }
+        }
+        try? fm.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }()
 

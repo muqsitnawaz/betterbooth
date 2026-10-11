@@ -8,6 +8,12 @@ cd "$(dirname "$0")/.."
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Resources/Info.plist)
 ZIP=build/BetterBooth-$VERSION.zip
 NOTES=${1:?usage: release.sh <notes.md>}
+: "${APPLE_ID:?}" "${APPLE_TEAM_ID:?}" "${APPLE_APP_SPECIFIC_PASSWORD:?}"
+# The release must be exactly the pushed main: a clean tree, HEAD on origin/main, a new tag.
+git fetch -q origin
+[ -z "$(git status --porcelain)" ] || { echo "release.sh: commit or discard local changes first"; exit 1; }
+[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "release.sh: HEAD is not origin/main"; exit 1; }
+! git ls-remote --exit-code --tags origin "v$VERSION" >/dev/null || { echo "release.sh: v$VERSION is already released"; exit 1; }
 
 ./scripts/build.sh --release
 ditto -c -k --keepParent build/BetterBooth.app "$ZIP"
@@ -19,4 +25,4 @@ rm -f "$ZIP"
 ditto -c -k --keepParent build/BetterBooth.app "$ZIP"
 spctl --assess --type execute build/BetterBooth.app
 
-gh release create "v$VERSION" "$ZIP" --title "BetterBooth $VERSION" --notes-file "$NOTES"
+gh release create "v$VERSION" "$ZIP" --target "$(git rev-parse HEAD)" --title "BetterBooth $VERSION" --notes-file "$NOTES"

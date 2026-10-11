@@ -119,7 +119,6 @@ struct SettingsPanel: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .keyboardShortcut("q")
             .padding(.top, 6)
         }
         .controlSize(.small)

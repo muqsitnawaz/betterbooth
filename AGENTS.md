@@ -37,8 +37,10 @@ Each of these fixed a real bug. Keep them when changing the code.
   Objective-C exception Swift can't catch (this crashed on the Cam Link 4K). Set the format and
   durations again after `startRunning()` and after the mic joins, because both reset them.
 - **The microphone is in the session whenever the camera runs in Video with sound on**
-  (`Config.recordsSound`, `updateMic`), so its level shows before recording; Photo never opens it. It joins before `startRunning()`, because joining a running
-  session pauses the camera for most of a second, and it never changes during a recording.
+  (`Config.recordsSound`, `updateMic`), so its level shows before recording. Photo never opens it.
+  It joins before `startRunning()` when the popover opens in Video. Switching from Photo to Video
+  adds it to the running session, which pauses the picture for under a second. It never changes
+  during a recording.
 - **One gesture rule in the UI.** A click turns an on/off control on or off; a right-click shows
   its choices (`.contextMenu`), and picking one also turns the control on. Settings that change
   the file live in Camera Settings (the format badge); effects that change the picture live in

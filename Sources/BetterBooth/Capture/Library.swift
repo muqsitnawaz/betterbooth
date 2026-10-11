@@ -9,8 +9,7 @@ final class Library: ObservableObject {
         return url
     }()
 
-    /// `BetterBooth 2026-10-11 01.18.09 cam-link-4k 9x16 1080p 30fps.mp4`: time first so files sort
-    /// by when they were taken, then the tags.
+    /// `BetterBooth 2026-10-11 01.18.09 cam-link-4k 9x16 1080p 30fps.mp4`, time first to sort.
     static func newURL(ext: String, tags: [String]) -> URL {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd HH.mm.ss"

@@ -1,35 +1,41 @@
 import AVFoundation
 import SwiftUI
 
-/// The camera's name on the preview; click it to pick another camera.
+/// The kind of camera as an icon on the preview; click it for the cameras by name.
 struct CameraMenu: View {
     @ObservedObject var camera: Camera
+
+    static func symbol(_ device: AVCaptureDevice?) -> String {
+        switch device?.deviceType {
+        case .continuityCamera?: return "iphone"
+        case .builtInWideAngleCamera?: return "laptopcomputer"
+        case nil: return "video.slash.fill"
+        default: return "camera.fill"
+        }
+    }
 
     var body: some View {
         let current = camera.devices.first { $0.uniqueID == camera.config.deviceID }
         Menu {
             Picker("Camera", selection: $camera.config.deviceID) {
                 ForEach(camera.devices, id: \.uniqueID) { device in
-                    Text(device.isSuspended ? "\(device.localizedName) (off: lid closed)" : device.localizedName)
+                    Label(device.isSuspended ? "\(device.localizedName) (off: lid closed)" : device.localizedName,
+                          systemImage: Self.symbol(device))
                         .tag(Optional(device.uniqueID))
                 }
             }
             .pickerStyle(.inline)
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: current?.deviceType == .continuityCamera ? "iphone" : "camera.fill")
-                Text(current?.localizedName ?? "No Camera").lineLimit(1)
-                Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold))
-            }
-            .font(.caption.weight(.semibold))
-            .overlayChip()
+            Image(systemName: Self.symbol(current))
+                .font(.caption.weight(.semibold))
+                .overlayChip()
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
         .disabled(camera.isRecording)
-        .help("Camera")
+        .help(current?.localizedName ?? "No camera")
     }
 }
 

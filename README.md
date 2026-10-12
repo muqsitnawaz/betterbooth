@@ -31,7 +31,10 @@ and the ring light start off.
 [**Try the interactive design prototype**](https://muqsitnawaz.github.io/camera/design/): every
 control in its popover is clickable.
 
-- **Camera.** The camera's name sits on the preview; click it to pick any connected camera.
+- **Camera.** An icon on the preview shows the kind of camera (a camera, an iPhone, a Mac); click
+  it to pick any connected camera by name.
+- **Size and window.** ⌘+ and ⌘− make the popover larger or smaller. Drag it off, or right-click
+  the menu-bar icon and pick Open in Window, for a window you can resize or make full screen.
 - **Photo or Video.** The microphone and its level meter appear in Video only. Click the mic to
   mute; right-click it to pick a microphone.
 - **Orientation.** The rotate button (or R) turns the frame on its side: 9:16 becomes 16:9, 4:5

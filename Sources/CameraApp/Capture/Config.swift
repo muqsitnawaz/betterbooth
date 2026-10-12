@@ -72,17 +72,14 @@ struct Config: Equatable, Codable {
     var micOn = true
     /// The microphone to record from; nil is the system's default input.
     var micID: String?
-    /// Clockwise turn per camera, for one mounted sideways or upside down.
+    /// Clockwise turn per camera, keyed by `Camera.mountKey` so another USB port keeps it.
+    /// A camera with no entry yet is turned upright from the faces it sees.
     var rotations: [String: Int] = [:]
     var blur: Blur = .off
     var brighten: Brighten = .off
     /// Writes where a capture was taken into the file. Off by default: files get shared.
     var saveLocation = false
 
-    var rotation: Int {
-        get { deviceID.flatMap { rotations[$0] } ?? 0 }
-        set { if let deviceID { rotations[deviceID] = ((newValue % 360) + 360) % 360 } }
-    }
     /// Only a video records sound, so a photo never opens the microphone.
     var recordsSound: Bool { mode == .video && micOn }
     var aspectLabel: String { aspect.label(landscape: landscape) }

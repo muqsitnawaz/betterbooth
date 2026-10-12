@@ -235,7 +235,7 @@ footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; }
 
             <div class="aspect-row" id="aspectRow">
               <span class="aspects" id="aspects"><button data-a="9:16" class="sel">9:16</button><button data-a="4:5">4:5</button><button data-a="3:4">3:4</button><button data-a="1:1">1:1</button></span>
-              <button class="iconbtn" id="rotate" aria-label="Turn the frame; right-click if the camera is mounted sideways">
+              <button class="iconbtn" id="rotate" aria-label="Turn the frame">
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2.5" width="8" height="13" rx="2"/><path d="M15.5 6.5 A7 7 0 0 0 11 2"/><path d="M11 0.8 L11 2.6 L12.8 2.6"/></svg>
               </button>
             </div>
@@ -351,7 +351,6 @@ footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; }
   $$('#modes button').forEach(b => b.onclick = () => { if (S.recording) return; S.mode = b.dataset.m; render(); });
   $$('#aspects button').forEach(b => b.onclick = () => { S.aspect = b.dataset.a; render(); });
   $('#rotate').onclick = () => { if (S.aspect !== '1:1') { S.land = !S.land; render(); } };
-  $('#rotate').oncontextmenu = e => { e.preventDefault(); toast('Right-click: turn a sideways camera’s picture'); };
   // timer & mic: click toggles, right-click chooses
   $('#timerBtn').onclick = () => { S.timer = S.timer ? 0 : 1; render(); };
   $('#timerBtn').oncontextmenu = e => { e.preventDefault(); S.timerSec = S.timerSec === 3 ? 10 : 3; S.timer = 1; render(); toast(`${S.timerSec}-second timer`); };

@@ -49,6 +49,10 @@ Each of these fixed a real bug. Keep them when changing the code.
   EXIF GPS in photos, an ISO 6709 `location` tag in videos. Scripted runs never save it.
 - **Timestamps.** Samples more than 1 s off the host clock are dropped (a Continuity Camera's
   first frames can be minutes off), and video and audio appends must strictly increase.
+- **A camera's turn is keyed by model and name** (`Camera.mountKey`), never its `uniqueID`, which
+  changes with the USB port on a Cam Link 4K. A camera with no saved turn is turned from Vision's
+  face roll: three agreeing readings, within 30° of a quarter turn. Any saved turn, even upright,
+  stops the detection, and scripted runs never detect.
 - **The feed state comes from frames that actually arrive.** It is live, waiting, black,
   suspended (lid closed) or no camera. A black picture is a hint and still captures.
 - **A stand-in camera is never saved.** If the chosen camera is unplugged or suspended, another

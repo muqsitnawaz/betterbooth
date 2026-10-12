@@ -2,22 +2,39 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleExecutable</key><string>Camera</string>
-    <key>CFBundleIdentifier</key><string>com.muqsitnawaz.BetterBooth</string>
-    <key>CFBundleName</key><string>Camera</string>
-    <key>CFBundleDisplayName</key><string>Camera</string>
-    <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.4.0</string>
-    <key>CFBundleVersion</key><string>1</string>
-    <key>CFBundleIconFile</key><string>AppIcon</string>
-    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-    <key>LSApplicationCategoryType</key><string>public.app-category.photography</string>
-    <key>LSMinimumSystemVersion</key><string>14.0</string>
-    <key>LSUIElement</key><true/>
-    <key>NSHighResolutionCapable</key><true/>
-    <key>NSCameraUsageDescription</key><string>Shows your camera so you can take photos and record videos.</string>
-    <key>NSMicrophoneUsageDescription</key><string>Records sound with your videos when the microphone is on.</string>
-    <key>NSLocationUsageDescription</key><string>Saves where a photo or video was taken when Location is on in Camera Settings.</string>
-    <key>NSLocationWhenInUseUsageDescription</key><string>Saves where a photo or video was taken when Location is on in Camera Settings.</string>
+	<key>CFBundleDisplayName</key>
+	<string>Camera</string>
+	<key>CFBundleExecutable</key>
+	<string>Camera</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.muqsitnawaz.BetterBooth</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Camera</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.4.1</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.photography</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Shows your camera so you can take photos and record videos.</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSLocationUsageDescription</key>
+	<string>Saves where a photo or video was taken when Location is on in Camera Settings.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Saves where a photo or video was taken when Location is on in Camera Settings.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Records sound with your videos when the microphone is on.</string>
 </dict>
 </plist>

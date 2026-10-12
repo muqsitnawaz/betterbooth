@@ -59,14 +59,33 @@ struct AspectPicker: View {
             .buttonStyle(.borderless)
             .imageScale(.large)
             .keyboardShortcut("r", modifiers: [])
-            .help((square ? "A square has no orientation" : "Turn the frame to \(landscape ? "portrait" : "landscape") · R")
-                  + " · right-click if the camera is mounted sideways")
-            .contextMenu {
-                Picker("Camera Mounted", selection: $config.rotation) {
-                    ForEach([0, 90, 180, 270], id: \.self) { Text($0 == 0 ? "Upright" : "Turn Picture \($0)° Clockwise").tag($0) }
-                }
-                .pickerStyle(.inline)
+            .help(square ? "A square has no orientation" : "Turn the frame to \(landscape ? "portrait" : "landscape") · R")
+        }
+    }
+}
+
+/// Stands the picture of a camera mounted sideways or upside down upright. Set on its own from the
+/// first faces a camera sees; a click turns it a further 90°, a right-click picks one.
+struct TurnButton: View {
+    @ObservedObject var camera: Camera
+
+    var body: some View {
+        let turn = camera.rotation
+        Button { camera.rotation = turn + 90 } label: {
+            Image(systemName: "rotate.right")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(turn != 0 ? Color.black : Color.white)
+                .frame(width: 28, height: 28)
+                .background(turn != 0 ? AnyShapeStyle(Color.yellow) : AnyShapeStyle(.black.opacity(0.45)), in: Circle())
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .help("Turn the picture 90° clockwise, for a camera mounted on its side" + (turn != 0 ? " · now turned \(turn)°" : ""))
+        .contextMenu {
+            Picker("Camera Mounted", selection: Binding(get: { camera.rotation }, set: { camera.rotation = $0 })) {
+                ForEach([0, 90, 180, 270], id: \.self) { Text($0 == 0 ? "Upright" : "Turn Picture \($0)° Clockwise").tag($0) }
             }
+            .pickerStyle(.inline)
         }
     }
 }

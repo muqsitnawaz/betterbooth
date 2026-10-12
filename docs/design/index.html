@@ -187,16 +187,14 @@ footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; }
                 <div class="person"><svg viewBox="0 0 200 260" aria-hidden="true"><ellipse cx="100" cy="78" rx="44" ry="52" fill="#e9b08f"/><path d="M56 70 Q60 22 100 22 Q142 22 146 72 Q132 46 100 46 Q70 46 56 70Z" fill="#3a2a22"/><path d="M10 260 Q14 160 100 150 Q186 160 190 260Z" fill="#e8edf2"/><path d="M80 150 L100 190 L120 150Z" fill="#c9d3dd"/></svg></div>
               </div>
               <div class="ov top">
-                <button class="glass" id="camChip" aria-label="Choose camera">
-                  <svg width="15" height="12" viewBox="0 0 16 12" fill="currentColor"><rect x="0" y="2" width="16" height="10" rx="2.5"/><rect x="5" y="0" width="6" height="3" rx="1"/><circle cx="8" cy="7" r="3" fill="#000" opacity=".55"/></svg>
-                  <span id="camName">OsmoPocket3</span>
-                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1.5 3 L4 5.5 L6.5 3"/></svg>
-                </button>
+                <button class="glass icon" id="camChip" aria-label="Camera: OsmoPocket3" title="OsmoPocket3"></button>
                 <span class="glass rec" id="recBadge"><span class="dot"></span><span id="recTime">00:00</span></span>
                 <button class="glass" id="badge" aria-label="Camera settings: resolution and frame rate">HD · 30</button>
               </div>
               <div class="ov bottom">
-                <span></span>
+                <button class="glass icon" id="turnBtn" aria-label="Turn the picture 90° clockwise; right-click to pick a turn">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="8" height="8" rx="1.5"/><path d="M6.5 2.5 H9.5 Q13.5 2.5 13.5 6.5 V8"/><path d="M11.5 6.2 L13.5 8.2 L15.5 6.2"/></svg>
+                </button>
                 <button class="glass icon" id="fxBtn" aria-label="Effects: blur, brighten, ring light">
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v2.2M8 12.8V15M1 8h2.2M12.8 8H15M3 3l1.6 1.6M11.4 11.4L13 13M3 13l1.6-1.6M11.4 4.6L13 3"/></svg>
                 </button>
@@ -264,10 +262,10 @@ footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; }
             <!-- camera list sheet -->
             <div class="sheet camlist" id="camSheet" role="dialog" aria-label="Choose camera">
               <h4>Camera <button data-close aria-label="Close">×</button></h4>
-              <button data-cam="OsmoPocket3" class="sel"><span>🎥</span>OsmoPocket3<span class="ck">✓</span></button>
-              <button data-cam="Muqsit’s iPhone"><span>📱</span>iPhone (Continuity Camera)<span class="ck">✓</span></button>
-              <button data-cam="Cam Link 4K"><span>🔌</span>Cam Link 4K<span class="ck">✓</span></button>
-              <button data-cam="MacBook Pro" class="off" title="Off while the lid is closed"><span>💻</span>MacBook Pro Camera · lid closed<span class="ck">✓</span></button>
+              <button data-icon="cam" data-cam="OsmoPocket3" class="sel"><span>🎥</span>OsmoPocket3<span class="ck">✓</span></button>
+              <button data-icon="phone" data-cam="Muqsit’s iPhone"><span>📱</span>iPhone (Continuity Camera)<span class="ck">✓</span></button>
+              <button data-icon="cam" data-cam="Cam Link 4K"><span>🔌</span>Cam Link 4K<span class="ck">✓</span></button>
+              <button data-icon="laptop" data-cam="MacBook Pro" class="off" title="Off while the lid is closed"><span>💻</span>MacBook Pro Camera · lid closed<span class="ck">✓</span></button>
             </div>
             <!-- camera settings sheet -->
             <div class="sheet" id="setSheet" role="dialog" aria-label="Camera settings">
@@ -281,7 +279,7 @@ footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; }
           </div>
         </div>
       </div>
-      <p class="caption">Interactive: everything in the popover is clickable. The picture is a drawn stand-in.</p>
+      <p class="caption">Interactive: everything in the popover is clickable. The picture is a drawn stand-in. In the app, drag the popover off (or right-click the menu-bar icon, Open in Window) for a resizable window that can go full screen; that menu and ⌘+ / ⌘− also set the popover's size.</p>
     </div>
 
   </div>
@@ -358,12 +356,24 @@ footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; }
   $('#micBtn').oncontextmenu = e => { e.preventDefault(); toast('Right-click: Scarlett 2i2 · MacBook Pro Mic · …'); };
   // overlays
   $('#badge').onclick = () => { closeSheets(); $('#tray').classList.remove('show'); $('#setSheet').classList.add('show'); };
+  // The chip shows only the kind of camera; names are in the list it opens.
+  const camIcons = {
+    cam: '<svg width="15" height="12" viewBox="0 0 16 12" fill="currentColor"><rect x="0" y="2" width="16" height="10" rx="2.5"/><rect x="5" y="0" width="6" height="3" rx="1"/><circle cx="8" cy="7" r="3" fill="#000" opacity=".55"/></svg>',
+    phone: '<svg width="10" height="15" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="8" height="14" rx="2"/><path d="M4 12.5h2"/></svg>',
+    laptop: '<svg width="17" height="12" viewBox="0 0 18 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="1" width="12" height="8" rx="1"/><path d="M1 11h16"/></svg>',
+  };
+  const showCam = b => { $('#camChip').innerHTML = camIcons[b.dataset.icon]; $('#camChip').title = b.dataset.cam; $('#camChip').setAttribute('aria-label', `Camera: ${b.dataset.cam}`); };
+  showCam($('#camSheet [data-cam].sel'));
+  // turn: for a camera mounted on its side; set on its own from the first faces a camera sees
+  let turn = 0;
+  $('#turnBtn').onclick = () => { turn = (turn + 90) % 360; $('#turnBtn').classList.toggle('on', turn !== 0); toast(turn ? `Picture turned ${turn}° clockwise` : 'Picture upright'); };
+  $('#turnBtn').oncontextmenu = e => { e.preventDefault(); toast('Right-click: Upright · 90° · 180° · 270° Clockwise'); };
   $('#camChip').onclick = () => { closeSheets(); $('#tray').classList.remove('show'); $('#camSheet').classList.add('show'); };
   $('#fxBtn').onclick = () => { closeSheets(); $('#tray').classList.toggle('show'); };
   $$('[data-close]').forEach(b => b.onclick = closeSheets);
   $$('#camSheet [data-cam]').forEach(b => b.onclick = () => {
     if (b.classList.contains('off')) { toast('MacBook Pro Camera is off while the lid is closed'); return; }
-    $$('#camSheet [data-cam]').forEach(x => x.classList.toggle('sel', x === b)); $('#camName').textContent = b.dataset.cam; closeSheets(); });
+    $$('#camSheet [data-cam]').forEach(x => x.classList.toggle('sel', x === b)); showCam(b); closeSheets(); });
   $$('.tray .seg button').forEach(b => b.onclick = () => { S[b.parentElement.dataset.fx] = b.dataset.v; render(); });
   $$('#setSheet .seg button').forEach(b => b.onclick = () => { S[b.parentElement.dataset.set] = b.dataset.v; render(); });
   $$('.switch').forEach(sw => sw.onclick = () => { S[sw.dataset.sw] = !S[sw.dataset.sw]; render(); if (sw.dataset.sw === 'loc' && S.loc) toast('macOS asks once: Allow location?'); });

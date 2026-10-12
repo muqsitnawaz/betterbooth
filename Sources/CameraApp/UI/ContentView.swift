@@ -1,9 +1,18 @@
 import AVFoundation
 import SwiftUI
 
+/// How big the popover's picture is, on its long side.
+enum PopoverSize: Int, CaseIterable {
+    case small = 384, medium = 512, large = 720
+    var name: String { ["Small", "Medium", "Large"][Self.allCases.firstIndex(of: self)!] }
+}
+
 struct ContentView: View {
     @ObservedObject var camera: Camera
     @ObservedObject var library: Library
+    /// In its own window the picture fills whatever size the window is; in the popover it has a set size.
+    var inWindow = false
+    @AppStorage("popoverSize") private var popoverSize = PopoverSize.medium
     @AppStorage("timer") private var timerOn = false
     @AppStorage("timerSeconds") private var timerSeconds = 3
     @AppStorage("ringLightLevel") private var ringLight = RingLight.Level.off
@@ -21,8 +30,8 @@ struct ContentView: View {
     private var mode: CaptureMode { camera.config.mode }
 
     private var previewSize: CGSize {
-        let r = camera.config.ratio
-        return r >= 1 ? CGSize(width: 512, height: (512 / r).rounded()) : CGSize(width: (512 * r).rounded(), height: 512)
+        let r = camera.config.ratio, long = CGFloat(popoverSize.rawValue)
+        return r >= 1 ? CGSize(width: long, height: (long / r).rounded()) : CGSize(width: (long * r).rounded(), height: long)
     }
 
     private var feedMessage: String? {
@@ -45,8 +54,11 @@ struct ContentView: View {
             if !library.items.isEmpty { strip }
         }
         .padding(14)
-        .frame(width: max(previewSize.width, 300) + 28)
+        .frame(width: inWindow ? nil : max(previewSize.width, 300) + 28)
+        .frame(maxWidth: inWindow ? .infinity : nil, maxHeight: inWindow ? .infinity : nil)
+        .background { if !inWindow { sizeShortcuts } }
         .animation(.easeInOut(duration: 0.25), value: camera.config.ratio)
+        .animation(.easeInOut(duration: 0.25), value: popoverSize)
         // Closing the popover stops the camera; a countdown must not fire into a stopped camera.
         .onDisappear {
             countdownTask?.cancel()
@@ -62,6 +74,17 @@ struct ContentView: View {
     private var shownRingLight: RingLight.Level { camera.feed == .off ? .off : ringLight }
 
     private var ringLightScreens: [NSScreen] { RingLight.screens(chosen: ringLightDisplays) }
+
+    /// ⌘+ and ⌘− step the popover's size.
+    private var sizeShortcuts: some View {
+        let sizes = PopoverSize.allCases, i = sizes.firstIndex(of: popoverSize)!
+        return ZStack {
+            Button("Larger") { popoverSize = sizes[min(i + 1, sizes.count - 1)] }.keyboardShortcut("=", modifiers: .command)
+            Button("Smaller") { popoverSize = sizes[max(i - 1, 0)] }.keyboardShortcut("-", modifiers: .command)
+        }
+        .opacity(0)
+        .allowsHitTesting(false)
+    }
 
     // MARK: Preview
 
@@ -101,9 +124,11 @@ struct ContentView: View {
                 previewOverlays
             }
         }
-        .frame(width: previewSize.width, height: previewSize.height)
+        .frame(width: inWindow ? nil : previewSize.width, height: inWindow ? nil : previewSize.height)
+        .aspectRatio(inWindow ? camera.config.ratio : nil, contentMode: .fit)
         .background(.black)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .frame(maxWidth: inWindow ? .infinity : nil, maxHeight: inWindow ? .infinity : nil)
     }
 
     private var previewOverlays: some View {

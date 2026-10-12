@@ -2,12 +2,14 @@ import AppKit
 import SwiftUI
 import Combine
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSWindowDelegate {
     let scripted = ["--photo", "--record", "--list"].contains { CommandLine.arguments.contains($0) }
     lazy var camera = Camera(persists: !scripted)
     private let library = Library()
     private var statusItem: NSStatusItem!
     private let popover = NSPopover()
+    /// The popover dragged off, or opened from the menu: resizable, and it can go full screen.
+    private var window: NSWindow?
     private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -48,6 +50,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     @objc private func statusItemClicked() {
         if NSApp.currentEvent?.type == .rightMouseUp {
             let menu = NSMenu()
+            menu.addItem(withTitle: "Open in Window", action: #selector(openWindow), keyEquivalent: "").target = self
+            let current = UserDefaults.standard.object(forKey: "popoverSize") as? Int ?? PopoverSize.medium.rawValue
+            for size in PopoverSize.allCases {
+                let item = menu.addItem(withTitle: "\(size.name) Popover", action: #selector(setPopoverSize), keyEquivalent: "")
+                item.target = self
+                item.tag = size.rawValue
+                item.state = size.rawValue == current ? .on : .off
+            }
+            menu.addItem(.separator())
             menu.addItem(withTitle: "Open Camera Folder", action: #selector(openFolder), keyEquivalent: "").target = self
             menu.addItem(.separator())
             menu.addItem(withTitle: "Quit Camera", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -56,7 +67,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             statusItem.menu = nil
             return
         }
-        if popover.isShown {
+        if let window {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate()
+        } else if popover.isShown {
             popover.performClose(nil)
         } else if let button = statusItem.button {
             camera.start()
@@ -69,11 +83,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     @objc private func openFolder() { NSWorkspace.shared.open(Library.folder) }
 
+    @objc private func setPopoverSize(_ item: NSMenuItem) { UserDefaults.standard.set(item.tag, forKey: "popoverSize") }
+
+    @objc private func openWindow() {
+        popover.performClose(nil)
+        let window = makeWindow()
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate()
+    }
+
+    /// While the window is open Camera is a regular app: in the Dock and ⌘-Tab, and able to go full screen.
+    private func makeWindow() -> NSWindow {
+        if let window { return window }
+        camera.start()
+        library.reload()
+        let host = NSHostingController(rootView: ContentView(camera: camera, library: library, inWindow: true))
+        host.sizingOptions = []
+        let window = NSWindow(contentViewController: host)
+        window.title = "Camera"
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+        window.titlebarAppearsTransparent = true
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.collectionBehavior = .fullScreenPrimary
+        window.contentMinSize = NSSize(width: 360, height: 520)
+        window.setContentSize(NSSize(width: 600, height: 860))
+        window.isReleasedWhenClosed = false
+        window.delegate = self
+        self.window = window
+        NSApp.setActivationPolicy(.regular)
+        return window
+    }
+
     func popoverShouldDetach(_ popover: NSPopover) -> Bool { true }
 
+    func detachableWindow(for popover: NSPopover) -> NSWindow? { makeWindow() }
+
     func popoverDidClose(_ notification: Notification) {
+        guard window == nil else { return }  // it was dragged off into the window, which keeps the camera
         camera.stop()
         RingLight.hide()
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        window = nil
+        camera.stop()
+        RingLight.hide()
+        NSApp.setActivationPolicy(.accessory)
     }
 
     func applicationWillTerminate(_ notification: Notification) {

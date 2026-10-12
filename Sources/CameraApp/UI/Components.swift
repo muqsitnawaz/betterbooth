@@ -99,16 +99,27 @@ struct PreviewView: NSViewRepresentable {
     let layer: AVSampleBufferDisplayLayer
 
     func makeNSView(context: Context) -> LayerHost {
-        let view = LayerHost()
+        let view = LayerHost(picture: layer)
         view.wantsLayer = true
         view.layer?.backgroundColor = NSColor.black.cgColor
-        view.layer?.addSublayer(layer)
         return view
     }
 
     func updateNSView(_ nsView: LayerHost, context: Context) {}
 
+    /// The popover and the window each have a preview but share one picture layer: whichever is shown holds it.
     final class LayerHost: NSView {
+        let picture: CALayer
+        init(picture: CALayer) { self.picture = picture; super.init(frame: .zero) }
+        required init?(coder: NSCoder) { fatalError() }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard window != nil, picture.superlayer !== layer else { return }
+            layer?.addSublayer(picture)
+            needsLayout = true
+        }
+
         override func layout() {
             super.layout()
             CATransaction.begin()

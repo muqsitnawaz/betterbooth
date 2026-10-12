@@ -80,6 +80,8 @@ struct Config: Equatable, Codable {
     var brighten: Brighten = .off
     /// Writes where a capture was taken into the file. Off by default: files get shared.
     var saveLocation = false
+    /// Rule-of-thirds lines over the preview; never in a saved file.
+    var grid = false
 
     /// Only a video records sound, so a photo never opens the microphone.
     var recordsSound: Bool { mode == .video && micOn }
@@ -118,6 +120,7 @@ struct Config: Equatable, Codable {
         if let v = try? c.decodeIfPresent(Blur.self, forKey: .blur) { blur = v }
         if let v = try? c.decodeIfPresent(Brighten.self, forKey: .brighten) { brighten = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .saveLocation) { saveLocation = v }
+        if let v = try? c.decodeIfPresent(Bool.self, forKey: .grid) { grid = v }
     }
 
     static func load() -> Config {

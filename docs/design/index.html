@@ -148,6 +148,11 @@ h1 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 6px; }
 .flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .35s; }
 .flash.on { opacity: 1; transition: none; }
 
+/* grid lines (Camera Settings) */
+.gridlines { position: absolute; inset: 0; pointer-events: none; display: none; }
+.gridlines.show { display: block; }
+.gridlines i { position: absolute; background: rgba(255,255,255,.45); box-shadow: 0 0 1px rgba(0,0,0,.5); }
+.gridlines i.v { top: 0; bottom: 0; width: 1px; } .gridlines i.h { left: 0; right: 0; height: 1px; }
 /* highlight for "show me" */
 @media (prefers-reduced-motion: reduce) { .preview, .scene, .shutter i { transition: none; } }
 
@@ -186,6 +191,7 @@ footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; }
                 <div class="bgl"></div>
                 <div class="person"><svg viewBox="0 0 200 260" aria-hidden="true"><ellipse cx="100" cy="78" rx="44" ry="52" fill="#e9b08f"/><path d="M56 70 Q60 22 100 22 Q142 22 146 72 Q132 46 100 46 Q70 46 56 70Z" fill="#3a2a22"/><path d="M10 260 Q14 160 100 150 Q186 160 190 260Z" fill="#e8edf2"/><path d="M80 150 L100 190 L120 150Z" fill="#c9d3dd"/></svg></div>
               </div>
+              <div class="gridlines" id="gridlines"><i class="v" style="left:33.333%"></i><i class="v" style="left:66.667%"></i><i class="h" style="top:33.333%"></i><i class="h" style="top:66.667%"></i></div>
               <div class="ov top">
                 <button class="glass icon" id="camChip" aria-label="Camera: OsmoPocket3" title="OsmoPocket3"></button>
                 <span class="glass rec" id="recBadge"><span class="dot"></span><span id="recTime">00:00</span></span>
@@ -273,6 +279,7 @@ footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; }
               <div class="line"><span>Resolution</span><span class="seg" data-set="res"><button data-v="HD" class="sel">1080p</button><button data-v="2K">1440p</button><button data-v="4K">4K</button></span></div>
               <div class="line" id="fpsLine"><span>Frame rate</span><span class="seg" data-set="fps"><button data-v="24">24</button><button data-v="30" class="sel">30</button><button data-v="60">60</button></span></div>
               <div class="line"><span>Mirror<small>Flip like a selfie camera</small></span><button class="switch on" data-sw="mirror" aria-label="Mirror"></button></div>
+              <div class="line"><span>Grid<small>Thirds on the preview. Never in photos or videos.</small></span><button class="switch" data-sw="grid" aria-label="Grid"></button></div>
               <div class="line" id="locLine"><span>Location<small>Adds where photos and videos were taken. macOS asks once.</small></span><button class="switch" data-sw="loc" aria-label="Location"></button></div>
               <button class="quit" id="quitBtn"><span>Quit Camera</span><span style="opacity:.6">⌘Q</span></button>
             </div>
@@ -290,7 +297,7 @@ footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; }
 (() => {
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const S = { mode: 'photo', aspect: '9:16', land: false, timer: 0, timerSec: 3, mic: true, viewing: null, recording: false,
-              blur: 'off', bright: '0', ring: 'off', res: 'HD', fps: '30', mirror: true, loc: false };
+              blur: 'off', bright: '0', ring: 'off', res: 'HD', fps: '30', mirror: true, loc: false, grid: false };
   const shots = [
     { kind: 'photo', g: 'linear-gradient(180deg,#ffb26b,#ff7a6b 40%,#b0507a 65%,#3b2a5a)', date: 'Today', time: '5:37 AM' },
     { kind: 'video', g: 'linear-gradient(180deg,#9ad0ff,#5aa0e0 45%,#2f5f8f 70%,#1d2f4f)', date: 'Today', time: '5:31 AM' },
@@ -343,6 +350,7 @@ footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; }
       $('#viewDate').innerHTML = `${s.date}<small>${s.time}${s.kind === 'video' ? ' · Video' : ''}</small>`;
       $('#player').classList.toggle('show', s.kind === 'video');
     } else v.classList.remove('show');
+    $('#gridlines').classList.toggle('show', S.grid && S.viewing === null);
     renderStrip();
   }
   // modes, aspects, rotate
@@ -372,7 +380,7 @@ footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; }
   $('#fxBtn').onclick = () => { closeSheets(); $('#tray').classList.toggle('show'); };
   $$('[data-close]').forEach(b => b.onclick = closeSheets);
   $$('#camSheet [data-cam]').forEach(b => b.onclick = () => {
-    if (b.classList.contains('off')) { toast('MacBook Pro Camera is off while the lid is closed'); return; }
+    if (b.classList.contains('off')) { toast('Lid closed'); return; }
     $$('#camSheet [data-cam]').forEach(x => x.classList.toggle('sel', x === b)); showCam(b); closeSheets(); });
   $$('.tray .seg button').forEach(b => b.onclick = () => { S[b.parentElement.dataset.fx] = b.dataset.v; render(); });
   $$('#setSheet .seg button').forEach(b => b.onclick = () => { S[b.parentElement.dataset.set] = b.dataset.v; render(); });

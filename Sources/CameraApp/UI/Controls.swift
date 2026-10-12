@@ -130,6 +130,8 @@ struct SettingsPanel: View {
             Divider()
             toggle("Mirror", note: "Flip like a selfie camera.", isOn: $camera.config.mirrored)
             Divider()
+            toggle("Grid", note: "Thirds on the preview. Never in photos or videos.", isOn: $camera.config.grid)
+            Divider()
             toggle("Location", note: camera.config.saveLocation && camera.locator.denied
                    ? "Off in System Settings → Privacy & Security → Location Services."
                    : "Adds where photos and videos were taken.", isOn: $camera.config.saveLocation)

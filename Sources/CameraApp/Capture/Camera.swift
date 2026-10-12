@@ -90,9 +90,10 @@ final class Camera: NSObject, ObservableObject {
     private var mountVotes: [Int] = []
     private let mountQueue = DispatchQueue(label: "camera.mount", qos: .utility)
 
-    // Main queue state: when the frame queue last reported a frame, and whether it was black.
+    // Main queue state: when the frame queue last reported a frame, and since when frames have been black.
     private var lastFrameSeen = Date.distantPast
-    private var lastFrameBlack = false
+    /// A dark room can read black for a moment, so the picture is called black only after 3 s of it.
+    private var blackSince: Date?
     private var running = false
     /// stop() was asked for during a recording; honoured when the recording ends.
     private var stopWhenDone = false
@@ -328,7 +329,7 @@ final class Camera: NSObject, ObservableObject {
         if let device = devices.first(where: { $0.uniqueID == config.deviceID }) {
             next = device.isSuspended ? .suspended
                 : Date().timeIntervalSince(lastFrameSeen) > 1.5 ? .waiting
-                : lastFrameBlack ? .black : .live
+                : blackSince.map { Date().timeIntervalSince($0) >= 3 } == true ? .black : .live
         } else {
             next = .noCamera
         }
@@ -393,9 +394,9 @@ final class Camera: NSObject, ObservableObject {
         switch feed {
         // A black picture is shown as a hint only: a dark room or a covered lens is still a picture.
         case .live, .black: return nil
-        case .suspended: return "\(deviceName) is off while the lid is closed"
+        case .suspended: return "\(deviceName): lid closed"
         case .noCamera: return "No camera connected"
-        default: return "No picture from \(deviceName) yet"
+        default: return "\(deviceName): no picture yet"
         }
     }
 
@@ -531,7 +532,7 @@ extension Camera: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDa
             let black = Self.isBlack(source)
             DispatchQueue.main.async {
                 self.lastFrameSeen = now
-                self.lastFrameBlack = black
+                self.blackSince = black ? self.blackSince ?? now : nil
                 self.updateFeed()
             }
         }
@@ -552,16 +553,18 @@ extension Camera: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDa
         DispatchQueue.main.async { self.micLevel.value = level }
     }
 
+    /// No sampled point lit above 8 of 255. A camera that is off sends pure black; a dim room
+    /// still has some point above that.
     private static func isBlack(_ buffer: CVPixelBuffer) -> Bool {
         guard CVPixelBufferGetPixelFormatType(buffer) == kCVPixelFormatType_32BGRA,
               CVPixelBufferLockBaseAddress(buffer, .readOnly) == kCVReturnSuccess else { return false }
         defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
         guard let base = CVPixelBufferGetBaseAddress(buffer)?.assumingMemoryBound(to: UInt8.self) else { return false }
         let w = CVPixelBufferGetWidth(buffer), h = CVPixelBufferGetHeight(buffer), stride = CVPixelBufferGetBytesPerRow(buffer)
-        for gy in 1...9 {
-            for gx in 1...9 {
-                let p = base + (h * gy / 10) * stride + (w * gx / 10) * 4
-                if max(p[0], p[1], p[2]) > 16 { return false }
+        for gy in 1...16 {
+            for gx in 1...16 {
+                let p = base + (h * gy / 17) * stride + (w * gx / 17) * 4
+                if max(p[0], p[1], p[2]) > 8 { return false }
             }
         }
         return true

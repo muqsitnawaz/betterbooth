@@ -86,7 +86,7 @@ final class Camera: NSObject, ObservableObject {
     private var lastReport = Date.distantPast
     private var lastMountCheck = Date.distantPast
     private var checkingMount = false
-    /// Turns read from faces on the mount queue; three in a row that agree decide.
+    /// Turns read from faces on the mount queue; five in a row that agree decide.
     private var mountVotes: [Int] = []
     private let mountQueue = DispatchQueue(label: "camera.mount", qos: .utility)
 
@@ -647,8 +647,8 @@ extension Camera: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDa
               face.confidence > 0.6, let roll = face.roll?.doubleValue else { return }
         let degrees = roll * 180 / .pi, quarter = (degrees / 90).rounded()
         guard abs(degrees - quarter * 90) < 30 else { return mountVotes = [] }
-        mountVotes = Array((mountVotes + [(Int(quarter) * 90 % 360 + 360) % 360]).suffix(3))
-        guard mountVotes.count == 3, Set(mountVotes).count == 1 else { return }
+        mountVotes = Array((mountVotes + [(Int(quarter) * 90 % 360 + 360) % 360]).suffix(5))
+        guard mountVotes.count == 5, Set(mountVotes).count == 1 else { return }
         let turn = mountVotes[0]
         mountVotes = []
         DispatchQueue.main.async {

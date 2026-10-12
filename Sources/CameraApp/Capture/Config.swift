@@ -67,7 +67,8 @@ struct Config: Equatable, Codable {
     var landscape = false
     var resolution: Resolution = .p1080
     var frameRate: FrameRate = .f30
-    var mirrored = true
+    /// The picture is mirrored before it is turned, and a mirror reverses a turn, so turns flip with it.
+    var mirrored = true { didSet { if mirrored != oldValue { rotations = rotations.mapValues { (360 - $0) % 360 } } } }
     var mode: CaptureMode = .photo
     var micOn = true
     /// The microphone to record from; nil is the system's default input.

@@ -197,7 +197,7 @@ final class Camera: NSObject, ObservableObject {
         updateLocation()
         if device?.uniqueID != appliedDeviceID {
             appliedDeviceID = device?.uniqueID
-            lastFrameSeen = .distantPast  // the new camera is live only once its own frames arrive
+            lastFrameSeen = .distantPast; blackSince = nil  // the new camera is live only once its own frames arrive
             updateFeed()
         }
         frameQueue.async {
@@ -288,7 +288,7 @@ final class Camera: NSObject, ObservableObject {
             stopWhenDone = false
             guard !running else { return }
             running = true
-            lastFrameSeen = .distantPast
+            lastFrameSeen = .distantPast; blackSince = nil
             updateFeed()
             updateMic()  // before starting, so the camera doesn't pause for it once the picture is up
             updateLocation()

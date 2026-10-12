@@ -129,3 +129,20 @@ struct PreviewView: NSViewRepresentable {
         }
     }
 }
+
+/// Rule-of-thirds lines over the preview.
+struct ThirdsGrid: View {
+    var body: some View {
+        Canvas { context, size in
+            var path = Path()
+            for i in 1...2 {
+                let x = size.width * CGFloat(i) / 3, y = size.height * CGFloat(i) / 3
+                path.move(to: CGPoint(x: x, y: 0)); path.addLine(to: CGPoint(x: x, y: size.height))
+                path.move(to: CGPoint(x: 0, y: y)); path.addLine(to: CGPoint(x: size.width, y: y))
+            }
+            context.stroke(path, with: .color(.black.opacity(0.25)), lineWidth: 2)
+            context.stroke(path, with: .color(.white.opacity(0.5)), lineWidth: 1)
+        }
+        .allowsHitTesting(false)
+    }
+}

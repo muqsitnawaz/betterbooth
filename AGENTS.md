@@ -55,7 +55,8 @@ Each of these fixed a real bug. Keep them when changing the code.
   stops the detection, and scripted runs never detect. A turn applies after the mirror, so turning
   Mirror on or off flips every saved turn (`Config.mirrored`). Two identical cameras share a turn.
 - **The feed state comes from frames that actually arrive.** It is live, waiting, black,
-  suspended (lid closed) or no camera. A black picture is a hint and still captures.
+  suspended (lid closed) or no camera. A black picture is a hint and still captures: no sampled
+  point above 8 of 255 for 3 s in a row, so a dim room never reads as black.
 - **A stand-in camera is never saved.** If the chosen camera is unplugged or suspended, another
   stands in, and the chosen one comes back when it reappears.
 - **Command-line captures never persist.** `Camera(persists:)` is fixed at init, because init

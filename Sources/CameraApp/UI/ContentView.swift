@@ -38,9 +38,9 @@ struct ContentView: View {
         switch camera.feed {
         case .live, .off: return nil
         case .waiting: return "Waiting for \(camera.deviceName)…"
-        case .black: return "The picture from \(camera.deviceName) is black.\nIf it shouldn't be, check the camera is on and plugged in."
-        case .suspended: return "\(camera.deviceName) is off while the lid is closed.\nPick another camera from the camera menu."
-        case .noCamera: return "No camera connected"
+        case .black: return "Picture is black\nIs \(camera.deviceName) on?"
+        case .suspended: return "Lid closed\nPick another camera"
+        case .noCamera: return "No camera"
         }
     }
 
@@ -91,6 +91,7 @@ struct ContentView: View {
     private var preview: some View {
         ZStack {
             PreviewView(layer: camera.displayLayer)
+            if camera.config.grid && camera.feed == .live && viewing == nil { ThirdsGrid() }
             if camera.access == .denied {
                 VStack(spacing: 8) {
                     Image(systemName: "video.slash.fill").font(.title)
@@ -104,7 +105,9 @@ struct ContentView: View {
             if camera.access == .granted, let message = feedMessage {
                 VStack(spacing: 8) {
                     if camera.feed == .waiting { ProgressView().controlSize(.small) }
-                    Text(message).font(.callout).multilineTextAlignment(.center)
+                    let lines = message.split(separator: "\n", maxSplits: 1)
+                    Text(lines[0]).font(.callout)
+                    if lines.count > 1 { Text(lines[1]).font(.caption).foregroundStyle(.white.opacity(0.6)) }
                 }
                 .padding(12)
                 .foregroundStyle(.white.opacity(0.9))

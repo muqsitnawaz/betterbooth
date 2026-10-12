@@ -23,7 +23,7 @@ and the ring light start off.
 <table>
 <tr>
 <td align="center" width="33%"><img src="docs/effects.png" width="220" alt="The effects tray over the picture: Portrait blur, Brighten and Ring light, each Off or one of two levels"><br><b>Effects</b> sit over the picture, so you see each change as you make it</td>
-<td align="center" width="33%"><img src="docs/settings.png" width="220" alt="Camera Settings over the picture: Resolution, Frame rate, Mirror, Location and Quit Camera"><br><b>Camera Settings</b> open from the HD badge: resolution, frame rate, mirror, location</td>
+<td align="center" width="33%"><img src="docs/settings.png" width="220" alt="Camera Settings over the picture: Resolution, Frame rate, Mirror, Location and Quit Camera"><br><b>Camera Settings</b> open from the HD badge: resolution, frame rate, mirror, grid, location</td>
 <td align="center" width="33%"><img src="docs/viewer.png" width="220" alt="A photo shown in place of the preview, with Back to Camera, the date, Share and Delete on top and arrows at the edges"><br><b>Your captures</b> open in place, like Photos: the date, Share and Delete</td>
 </tr>
 </table>
@@ -47,7 +47,8 @@ control in its popover is clickable.
   the ring light to pick which displays it shines from.
 - **Camera Settings.** The badge on the preview shows the format (HD, 4K, and the frame rate in
   Video) and opens its settings. Rates a camera can't deliver aren't offered, and a size above the
-  camera's real pixels says it is upscaled. Location writes where a capture was taken into the
+  camera's real pixels says it is upscaled. Grid draws rule-of-thirds lines over the preview,
+  never into a file. Location writes where a capture was taken into the
   file, and is off until you turn it on. Quit is here too.
 - **Timer.** Click for a countdown; right-click for 3 or 10 seconds.
 - **Viewing.** Click a capture in the strip to see it in place; double-click to open it in Preview

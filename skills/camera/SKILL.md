@@ -22,7 +22,7 @@ captures from the command line without opening a window:
 - **It waits for a real picture.** It waits for the camera to deliver live frames (up to 6
   seconds), then lets exposure settle for a second before capturing. With a MacBook's lid
   closed, ffmpeg's `-f avfoundation` sat waiting with no output in testing; Camera says why
-  instead: `error: MacBook Pro Camera is off while the lid is closed`.
+  instead: `error: MacBook Pro Camera: lid closed`.
 - **Framing is done for you.** Ask for `9:16` and you get a centred 9:16 crop at the size you
   asked for. Camera picks the camera mode that keeps the most real pixels: the MacBook camera
   has a native 1080×1920 portrait mode, so vertical photos are not cut from a landscape frame.
@@ -75,7 +75,7 @@ command-line captures never write a location.
 ## Cases it handles
 
 - **iPhone as a camera.** Continuity Camera shows up as "<Name>'s iPhone Camera". It is wireless
-  and can drop out between sessions; a capture then fails with `error: No picture from ... yet`
+  and can drop out between sessions; a capture then fails with `error: ...: no picture yet`
   instead of hanging, so retry.
 - **Vertical from a landscape camera.** `--aspect 9:16` crops the centre of the frame.
 - **A camera mounted on its side.** `--rotate 90` (or `270`) turns the picture first, so the

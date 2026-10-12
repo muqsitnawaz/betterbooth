@@ -38,6 +38,15 @@ final class Camera: NSObject, ObservableObject {
     var isRecording: Bool { recordingSince != nil }
     var deviceName: String { devices.first { $0.uniqueID == config.deviceID }?.localizedName ?? "the camera" }
 
+    /// A camera's `uniqueID` can change with the USB port (Cam Link 4K), its model and name don't.
+    static func mountKey(_ device: AVCaptureDevice) -> String { "\(device.modelID) \(device.localizedName)" }
+    private var mountKey: String? { devices.first { $0.uniqueID == config.deviceID }.map(Self.mountKey) }
+    /// The current camera's clockwise turn, for one mounted sideways or upside down.
+    var rotation: Int {
+        get { mountKey.flatMap { config.rotations[$0] } ?? 0 }
+        set { if let mountKey { config.rotations[mountKey] = ((newValue % 360) + 360) % 360 } }
+    }
+
     private let session = AVCaptureSession()
     private let videoOutput = AVCaptureVideoDataOutput()
     private let audioOutput = AVCaptureAudioDataOutput()
@@ -54,6 +63,8 @@ final class Camera: NSObject, ObservableObject {
     // Frame queue state.
     private struct Render: Equatable {
         var deviceID: String?; var size: CGSize; var mirrored: Bool; var rotation: Int
+        /// The camera has no saved turn yet, so frames are checked for a face on its side.
+        var findsMount = false
         /// Stops of exposure added, and the background blur radius in output pixels; 0 is off.
         var exposure = 0.0, blur = 0.0
     }
@@ -73,6 +84,11 @@ final class Camera: NSObject, ObservableObject {
     private var lastFrame: CVPixelBuffer?
     private var recorder: Recorder?
     private var lastReport = Date.distantPast
+    private var lastMountCheck = Date.distantPast
+    private var checkingMount = false
+    /// Turns read from faces on the mount queue; three in a row that agree decide.
+    private var mountVotes: [Int] = []
+    private let mountQueue = DispatchQueue(label: "camera.mount", qos: .utility)
 
     // Main queue state: when the frame queue last reported a frame, and whether it was black.
     private var lastFrameSeen = Date.distantPast
@@ -125,7 +141,7 @@ final class Camera: NSObject, ObservableObject {
     private func configChanged(from old: Config) {
         guard config != old else { return }
         // The output size and camera are fixed for the length of a recording.
-        if isRecording && (config.outputSize != old.outputSize || config.deviceID != old.deviceID || config.rotation != old.rotation
+        if isRecording && (config.outputSize != old.outputSize || config.deviceID != old.deviceID || config.rotations != old.rotations
                            || config.recordsSound != old.recordsSound || config.micID != old.micID) {
             config = old  // setting a property inside its own didSet does not re-enter didSet
             return
@@ -144,6 +160,14 @@ final class Camera: NSObject, ObservableObject {
             deviceTypes: [.builtInWideAngleCamera, .external, .continuityCamera],
             mediaType: .video, position: .unspecified).devices
         mics = AVCaptureDevice.DiscoverySession(deviceTypes: [.microphone], mediaType: .audio, position: .unspecified).devices
+        // Turns saved by an older build under the port-specific ID move to the stable key.
+        var rotations = config.rotations
+        for device in devices {
+            if let turn = rotations.removeValue(forKey: device.uniqueID), rotations[Self.mountKey(device)] == nil {
+                rotations[Self.mountKey(device)] = turn
+            }
+        }
+        if rotations != config.rotations { config.rotations = rotations }
         suspensionWatches = devices.map { device in
             device.observe(\.isSuspended) { [weak self] _, _ in DispatchQueue.main.async { self?.refreshDevices() } }
         }
@@ -165,7 +189,8 @@ final class Camera: NSObject, ObservableObject {
     private func apply() {
         let config = config
         let device = devices.first { $0.uniqueID == config.deviceID }
-        let render = Render(deviceID: device?.uniqueID, size: config.outputSize, mirrored: config.mirrored, rotation: config.rotation,
+        let render = Render(deviceID: device?.uniqueID, size: config.outputSize, mirrored: config.mirrored, rotation: rotation,
+                            findsMount: persists && mountKey.map { config.rotations[$0] == nil } == true,
                             exposure: config.brighten.stops, blur: config.blur.radius * Double(config.resolution.rawValue) / 1080)
         updateMic()
         updateLocation()
@@ -178,6 +203,7 @@ final class Camera: NSObject, ObservableObject {
             if render.size != self.renderState.size || render.deviceID != self.renderState.deviceID || render.rotation != self.renderState.rotation {
                 self.lastFrame = nil  // a photo must never be a frame from before the change
             }
+            if render.deviceID != self.renderState.deviceID { self.mountQueue.async { self.mountVotes = [] } }
             self.renderState = render
         }
 
@@ -193,7 +219,7 @@ final class Camera: NSObject, ObservableObject {
         })
         let rate = rates.contains(config.frameRate) ? config.frameRate
             : rates.min { abs($0.value - config.frameRate.value) < abs($1.value - config.frameRate.value) }
-        let sideways = config.rotation % 180 != 0
+        let sideways = rotation % 180 != 0
         func score(_ f: AVCaptureDevice.Format) -> (Int, Int) {
             let d = CMVideoFormatDescriptionGetDimensions(f.formatDescription)
             let w = Int(sideways ? d.height : d.width), h = Int(sideways ? d.width : d.height)
@@ -491,6 +517,15 @@ extension Camera: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDa
         show(frame, at: time)
 
         let now = Date()
+        if renderState.findsMount && !checkingMount && now.timeIntervalSince(lastMountCheck) > 0.5 {
+            lastMountCheck = now
+            checkingMount = true
+            let deviceID = renderState.deviceID
+            mountQueue.async {
+                self.findMount(source, deviceID: deviceID)
+                self.frameQueue.async { self.checkingMount = false }
+            }
+        }
         if now.timeIntervalSince(lastReport) > 0.25 {
             lastReport = now
             let black = Self.isBlack(source)
@@ -600,6 +635,28 @@ extension Camera: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDa
         guard let out else { return nil }
         ciContext.render(image, to: out, bounds: CGRect(origin: .zero, size: size), colorSpace: colorSpace)
         return out
+    }
+
+    /// Mount queue. A face lying on its side says how the camera is mounted. Vision's roll is the
+    /// clockwise turn that stands the raw picture upright; a tilted head (over 30° off a quarter turn) is no reading.
+    private func findMount(_ source: CVPixelBuffer, deviceID: String?) {
+        let request = VNDetectFaceRectanglesRequest()
+        request.revision = VNDetectFaceRectanglesRequestRevision3
+        try? VNImageRequestHandler(cvPixelBuffer: source).perform([request])
+        guard let face = request.results?.max(by: { $0.boundingBox.width < $1.boundingBox.width }),
+              face.confidence > 0.6, let roll = face.roll?.doubleValue else { return }
+        let degrees = roll * 180 / .pi, quarter = (degrees / 90).rounded()
+        guard abs(degrees - quarter * 90) < 30 else { return mountVotes = [] }
+        mountVotes = Array((mountVotes + [(Int(quarter) * 90 % 360 + 360) % 360]).suffix(3))
+        guard mountVotes.count == 3, Set(mountVotes).count == 1 else { return }
+        let turn = mountVotes[0]
+        mountVotes = []
+        DispatchQueue.main.async {
+            guard self.config.deviceID == deviceID, !self.isRecording,
+                  let key = self.mountKey, self.config.rotations[key] == nil else { return }
+            // The picture is mirrored before it is turned, and a mirror reverses the turn.
+            self.rotation = self.config.mirrored ? 360 - turn : turn
+        }
     }
 
     private func personMask(_ picture: CIImage) -> CIImage? {

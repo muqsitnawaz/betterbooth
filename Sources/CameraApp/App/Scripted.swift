@@ -52,7 +52,7 @@ extension AppDelegate {
             camera.config.micID = mic.uniqueID
         }
         if let degrees = option("--rotate", "0, 90, 180 or 270", { Int($0).flatMap { [0, 90, 180, 270].contains($0) ? $0 : nil } }) {
-            camera.config.rotation = degrees
+            camera.rotation = degrees
         }
         if let res = option("--res", "720, 1080, 1440 or 2160", { Int($0).flatMap(Resolution.init(rawValue:)) }) { camera.config.resolution = res }
         if let fps = option("--fps", "23.98, 24, 30 or 60", FrameRate.init(rawValue:)) { camera.config.frameRate = fps }

@@ -35,8 +35,10 @@ control in its popover is clickable.
 - **Photo or Video.** The microphone and its level meter appear in Video only. Click the mic to
   mute; right-click it to pick a microphone.
 - **Orientation.** The rotate button (or R) turns the frame on its side: 9:16 becomes 16:9, 4:5
-  becomes 5:4. Right-click it when a camera is mounted sideways or upside down to turn its picture
-  upright, remembered per camera.
+  becomes 5:4.
+- **A camera mounted sideways.** The first time a camera sees a face, Camera turns its picture
+  upright on its own. The turn button at the preview's corner turns it a further 90°; right-click
+  it to pick one. The turn is remembered per camera, whichever USB port it is plugged into.
 - **Effects.** The button at the preview's corner opens Portrait blur, Brighten, and the ring
   light: a band of white light around the edge of your screen that lights your face. Right-click
   the ring light to pick which displays it shines from.
@@ -63,8 +65,8 @@ keep it open as a window.
 - **Capture cards.** An HDMI capture card such as the Elgato Cam Link 4K turns a mirrorless or
   DSLR camera into a source, at up to 60 fps.
 - **USB webcams and audio interfaces.** Any camera and any microphone macOS sees.
-- **A camera mounted on its side.** Turn its picture upright once and the full sensor becomes a
-  vertical frame; Camera remembers it for that camera.
+- **A camera mounted on its side.** Camera turns its picture upright from the first face it sees,
+  so the full sensor becomes a vertical frame; it remembers the turn for that camera.
 - **A closed MacBook lid.** The built-in camera is off, so Camera uses another connected
   camera and switches back to your choice when it returns.
 
